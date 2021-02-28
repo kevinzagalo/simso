@@ -51,7 +51,7 @@ def compute_instructions(task, running_jobs, duration):
 
 
 class CacheModel(AbstractExecutionTimeModel):
-    def __init__(self, sim, nb_processors):
+    def __init__(self, sim, nb_processors=None):
         self.sim = sim
         self._nb_processors = nb_processors
 

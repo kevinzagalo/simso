@@ -4,6 +4,7 @@
 import os
 import re
 from xml.dom import minidom
+import numpy as np
 from simso.core.Scheduler import SchedulerInfo
 from simso.core import Scheduler
 from simso.core.Task import TaskInfo
@@ -38,7 +39,7 @@ class Configuration(object):
     of this class will be passed to the constructor of the
     :class:`Model <simso.core.Model.Model>` class.
     """
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, modes=None):
         """
         Args:
             - `filename` A file can be used to initialize the configuration.
@@ -57,9 +58,11 @@ class Configuration(object):
             self._scheduler_info = parser.scheduler_info
             self.penalty_preemption = parser.penalty_preemption
             self.penalty_migration = parser.penalty_migration
+            self.modes = modes
+            self.M = 1
         else:
             self.etm = "wcet"
-            self.duration = 100000000
+            self.duration = 1000000000
             self.penalty_preemption = 0
             self.penalty_migration = 0
             self.cycles_per_ms = 1000000
@@ -70,6 +73,8 @@ class Configuration(object):
             self.proc_data_fields = {}
             self.memory_access_time = 100
             self._scheduler_info = SchedulerInfo()
+            self.modes = modes
+            self.M = 1
         self.calc_penalty_cache()
         self._set_filename(filename)
 
@@ -181,40 +186,51 @@ class Configuration(object):
                 "name must begins with a letter and must not contains any "\
                 "special character."
 
-            # Activation date >= 0:
+            # Activation date >= 0:
             assert task.activation_date >= 0, \
                 "Activation date must be positive."
 
             # Period >= 0:
             assert task.period >= 0, "Tasks' periods must be positives."
 
-            # Deadline >= 0:
+            # Deadline >= 0:
             assert task.deadline >= 0, "Tasks' deadlines must be positives."
 
             # N_instr >= 0:
             assert task.n_instr >= 0, \
                 "A number of instructions must be positive."
 
-            # WCET >= 0:
-            assert task.wcet >= 0, "WCET must be positive."
+            # WCET >= 0:
+            if isinstance(task.wcet, np.ndarray):
+                assert np.min(task.wcet[0, :]) >= 0, "WCETs must be positive"
+                assert np.sum(task.wcet[1, :]) == 1, "probabilities sum must be 1"
+            elif isinstance(task.wcet, dict):
+                assert np.min(task.wcet['a']) >= 0, "WCETs must be positive"
+                assert np.sum(task.wcet['p']) == 1, "probabilities sum must be 1"
+            else:
+                assert task.wcet >= 0, "WCET must be positive."
+                if self.etm == "cache":
+                    # stack
+                    assert task.stack_file, "A task needs a stack profile."
+
+                    # stack ok
+                    assert task.csdp, "Stack not found or empty."
+
 
             # ACET >= 0:
-            assert task.acet >= 0, "ACET must be positive."
+            assert all(a > 0 for a in task.acet), "ACET must be positive."
 
             # ET-STDDEV >= 0:
-            assert task.et_stddev >= 0, \
+            assert all(s > 0 for s in task.et_stddev), \
                 "A standard deviation is a positive number."
+
+            # sum(p) == 1, p > 0
+            assert all(p > 0 for p in task.p_et) and sum(task.p_et) == 1, \
+                "Probabilities should be positive and sum up to 1. ({})".format(sum(task.p_et))
 
             # mix in [0.0, 2.0]
             assert 0.0 <= task.mix <= 2.0, \
                 "A mix must be positive and less or equal than 2.0"
-
-            if self.etm == "cache":
-                # stack
-                assert task.stack_file, "A task needs a stack profile."
-
-                # stack ok
-                assert task.csdp, "Stack not found or empty."
 
     def check_caches(self):
         for index, cache in enumerate(self._caches_list):
@@ -231,7 +247,7 @@ class Configuration(object):
             # Taille positive :
             assert cache.size >= 0, "A cache size must be positive."
 
-            # Access time >= 0:
+            # Access time >= 0:
             assert cache.access_time >= 0, "An access time must be positive."
 
     def get_hyperperiod(self):
@@ -281,18 +297,22 @@ class Configuration(object):
                  abort_on_miss=True, period=10, activation_date=0,
                  n_instr=0, mix=0.5, stack_file="", wcet=0, acet=0,
                  et_stddev=0, deadline=10, base_cpi=1.0, followed_by=None,
-                 list_activation_dates=[], preemption_cost=0, data=None):
+                 list_activation_dates=[], preemption_cost=0, data=None, p_et=[1]):
         """
         Helper method to create a TaskInfo and add it to the list of tasks.
         """
         if data is None:
             data = dict((k, None) for k in self.task_data_fields)
 
+        if p_et[0] == 1:
+            acet = [wcet / 2]
+            et_stddev = [1]
+
         task = TaskInfo(name, identifier, task_type, abort_on_miss, period,
                         activation_date, n_instr, mix,
                         (stack_file, self.cur_dir), wcet, acet, et_stddev,
                         deadline, base_cpi, followed_by, list_activation_dates,
-                        preemption_cost, data)
+                        preemption_cost, data, p_et)
         self.task_info_list.append(task)
         return task
 
@@ -307,3 +327,6 @@ class Configuration(object):
             speed)
         self.proc_info_list.append(proc)
         return proc
+
+    def add_modes(self, modes):
+        self.modes = modes

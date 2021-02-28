@@ -5,6 +5,7 @@ Tools for generating task sets.
 import numpy as np
 import random
 import math
+from simso.estimation.Gumbel import Gumbel
 
 
 def UUniFastDiscard(n, u, nsets):
@@ -13,8 +14,9 @@ def UUniFastDiscard(n, u, nsets):
         # Classic UUniFast algorithm:
         utilizations = []
         sumU = u
+        U = Gumbel(d=n, beta=np.random.choice(a=(1.1, 1.2, 1.5, 2))).simulate(1)
         for i in range(1, n):
-            nextSumU = sumU * random.random() ** (1.0 / (n - i))
+            nextSumU = sumU * U[i] ** (1.0 / (n - i))
             utilizations.append(sumU - nextSumU)
             sumU = nextSumU
         utilizations.append(sumU)

@@ -2,7 +2,8 @@
 
 from SimPy.Simulation import Process, hold, passivate
 from simso.core.JobEvent import JobEvent
-from math import ceil
+from math import ceil, exp
+from numpy.random import choice as random
 
 
 class Job(Process):
@@ -29,9 +30,11 @@ class Job(Process):
         """
         Process.__init__(self, name=name, sim=sim)
         self._task = task
+        self.name = name
         self._pred = pred
         self.instr_count = 0  # Updated by the cache model.
         self._computation_time = 0
+        self._response_time = 0
         self._last_exec = None
         self._n_instr = task.n_instr
         self._start_date = None
@@ -44,7 +47,6 @@ class Job(Process):
         self._monitor = monitor
         self._etm = etm
         self._was_running_on = task.cpu
-
         self._on_activate()
 
         self.context_ok = True  # The context is ready to be loaded.
@@ -91,12 +93,12 @@ class Job(Process):
     def _on_terminated(self):
         self._on_stop_exec()
         self._etm.on_terminated(self)
-
         self._end_date = self.sim.now()
         self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.end_job(self)
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
+        self._sim.scheduler.add_response_time(self)
 
     def _on_abort(self):
         self._on_stop_exec()
@@ -171,14 +173,14 @@ class Job(Process):
         """
         Remaining execution time in ms.
         """
-        return self.wcet - self.actual_computation_time
+        return self._etm.get_ret(self)
 
     @property
     def laxity(self):
         """
         Dynamic laxity of the job in ms.
         """
-        return (self.absolute_deadline - self.ret
+        return (self.absolute_deadline - self._etm.get_ret()
                 ) * self.sim.cycles_per_ms - self.sim.now()
 
     @property
@@ -246,6 +248,18 @@ class Job(Process):
         return self._task.wcet
 
     @property
+    def acet(self):
+        return self._task.acet
+
+    @property
+    def et_stddev(self):
+        return self._task.et_stddev
+
+    @property
+    def p_et(self):
+        return self._task.p_et
+
+    @property
     def activation_date(self):
         """
         Activation date in milliseconds for this job.
@@ -291,7 +305,7 @@ class Job(Process):
             # Wait an execute order.
             yield passivate, self
 
-            # Execute the job.
+            # Execute the job.
             if not self.interrupted():
                 self._on_execute()
                 # ret is a duration lower than the remaining execution time.
@@ -314,3 +328,5 @@ class Job(Process):
 
             else:
                 self.interruptReset()
+
+

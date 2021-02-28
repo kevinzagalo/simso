@@ -7,6 +7,8 @@ from simso.core.Timer import Timer
 from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
+from simso.estimation.Modes import Modes
+from numpy import array
 
 
 class Model(Simulation):
@@ -15,7 +17,7 @@ class Model(Simulation):
     required by the simulation and run it.
     """
 
-    def __init__(self, configuration, callback=None):
+    def __init__(self, configuration, callback=None, p=None):
         """
         Args:
             - `callback`: A callback can be specified. This function will be \
@@ -31,7 +33,13 @@ class Model(Simulation):
         task_info_list = configuration.task_info_list
         proc_info_list = configuration.proc_info_list
         self._cycles_per_ms = configuration.cycles_per_ms
+        self.p = p
+        if 'EDF_CD' in configuration.scheduler_info.clas and not p:
+            configuration.scheduler_info.clas = "simso.schedulers.EDF_US"
+            self.p = True
+
         self.scheduler = configuration.scheduler_info.instantiate(self)
+        self.configuration = configuration
 
         try:
             self._etm = execution_time_models[configuration.etm](
@@ -72,6 +80,7 @@ class Model(Simulation):
         self.scheduler.task_list = self._task_list
         self.scheduler.processors = self._processors
         self.results = None
+        self.Mmax = 50
 
     def now_ms(self):
         return float(self.now()) / self._cycles_per_ms
@@ -131,6 +140,8 @@ class Model(Simulation):
         """ Execute the simulation."""
         self.initialize()
         self.scheduler.init()
+        self.scheduler.init_response_time()
+
         self.progress.start()
 
         for cpu in self._processors:
@@ -147,3 +158,29 @@ class Model(Simulation):
             if self.now() > 0:
                 self.results = Results(self)
                 self.results.end()
+        if self.p:
+            X = array(self.scheduler.response_times)
+            self.configuration.scheduler_info.clas = "simso.schedulers.EDF_CD"
+            self.configuration.scheduler_info.modes = Modes(Mmax=self.configuration.Mmax).fit(X)
+
+            self.__init__(self.configuration, p=True)
+            self.initialize()
+            self.scheduler.init()
+            self.scheduler.init_response_time()
+
+            self.progress.start()
+
+            for cpu in self._processors:
+                self.activate(cpu, cpu.run())
+
+            for task in self._task_list:
+                self.activate(task, task.execute())
+
+            try:
+                self.simulate(until=self._duration)
+            finally:
+                self._etm.update()
+
+                if self.now() > 0:
+                    self.results = Results(self)
+                    self.results.end()

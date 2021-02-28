@@ -35,13 +35,14 @@ class EDF_US(Scheduler):
                 1 if x is cpu else 0
             )
             cpu_min = max(self.processors, key=key)
+            active_jobs = [j for j in self.ready_list if j.is_active()]
 
-            job = min([j for j in self.ready_list if j.is_active()],
-                      key=lambda x: x.priority)
+            if active_jobs:
+                job = min(active_jobs, key=lambda x: x.priority)
 
-            if (cpu_min.running is None or
-                    cpu_min.running.priority > job.priority):
-                self.ready_list.remove(job)
-                if cpu_min.running:
-                    self.ready_list.append(cpu_min.running)
-                return (job, cpu_min)
+                if (cpu_min.running is None or
+                        cpu_min.running.priority > job.priority):
+                    self.ready_list.remove(job)
+                    if cpu_min.running:
+                        self.ready_list.append(cpu_min.running)
+                    return (job, cpu_min)

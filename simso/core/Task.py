@@ -4,10 +4,13 @@ from collections import deque
 from SimPy.Simulation import Process, Monitor, hold, passivate
 from simso.core.Job import Job
 from simso.core.Timer import Timer
+from simso.utils.probabilistic_calc import random_int_from_distr
 from .CSDP import CSDP
 
 import os
 import os.path
+from numpy.random import choice, randint
+from scipy.stats import norm
 
 
 class TaskInfo(object):
@@ -20,7 +23,7 @@ class TaskInfo(object):
     def __init__(self, name, identifier, task_type, abort_on_miss, period,
                  activation_date, n_instr, mix, stack_file, wcet, acet,
                  et_stddev, deadline, base_cpi, followed_by,
-                 list_activation_dates, preemption_cost, data):
+                 list_activation_dates, preemption_cost, data, p_et):
         """
         :type name: str
         :type identifier: int
@@ -40,6 +43,7 @@ class TaskInfo(object):
         :type list_activation_dates: list
         :type preemption_cost: int
         :type data: dict
+        :type pwcet: dict
         """
         self.name = name
         self.identifier = identifier
@@ -48,6 +52,9 @@ class TaskInfo(object):
         self.activation_date = activation_date
         self.n_instr = n_instr
         self.mix = mix
+        self.M = len(p_et)
+        p_et[-1] = 1 - sum(p_et[:-1])
+        self.p_et = p_et
         self.wcet = wcet
         self.acet = acet
         self.et_stddev = et_stddev
@@ -62,6 +69,7 @@ class TaskInfo(object):
         self.list_activation_dates = list_activation_dates
         self.data = data
         self.preemption_cost = preemption_cost
+        self.response_times = []
 
     @property
     def csdp(self):
@@ -130,8 +138,7 @@ class GenericTask(Process):
         Process.__init__(self, name=task_info.name, sim=sim)
         self.name = task_info.name
         self._task_info = task_info
-        self._monitor = Monitor(name="Monitor" + self.name + "_states",
-                                sim=sim)
+        self._monitor = Monitor(name="Monitor" + self.name + "_states", sim=sim)
         self._activations_fifo = deque([])
         self._sim = sim
         self.cpu = None
@@ -141,6 +148,8 @@ class GenericTask(Process):
         self._cpi_alone = {}
         self._jobs = []
         self.job = None
+        self.id = int(task_info.identifier - 1)
+        self.miss_count = None
 
     def __lt__(self, other):
         return self.identifier < other.identifier
@@ -209,6 +218,10 @@ class GenericTask(Process):
         return self._task_info.et_stddev
 
     @property
+    def p_et(self):
+        return self._task_info.p_et
+
+    @property
     def period(self):
         """
         Period of the task.
@@ -262,9 +275,12 @@ class GenericTask(Process):
 
     def _job_killer(self, job):
         if job.end_date is None and job.computation_time < job.wcet:
+            if self.miss_count is None:
+                self.miss_count = 0
             if self._task_info.abort_on_miss:
                 self.cancel(job)
                 job.abort()
+                self.miss_count += 1
 
     def create_job(self, pred=None):
         """
@@ -272,9 +288,9 @@ class GenericTask(Process):
         directly by a scheduler.
         """
         self._job_count += 1
+
         job = Job(self, "{}_{}".format(self.name, self._job_count), pred,
                   monitor=self._monitor, etm=self._etm, sim=self.sim)
-
         if len(self._activations_fifo) == 0:
             self.job = job
             self.sim.activate(job, job.activate_job())

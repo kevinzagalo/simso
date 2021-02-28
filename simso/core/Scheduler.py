@@ -19,7 +19,7 @@ class SchedulerInfo(object):
     scheduling overhead) and do the dynamic loading of the scheduler.
     """
     def __init__(self, clas='', overhead=0, overhead_activate=0,
-                 overhead_terminate=0, fields=None):
+                 overhead_terminate=0, fields=None, modes=None):
         """
         Args:
             - `name`: Name of the scheduler.
@@ -35,6 +35,7 @@ class SchedulerInfo(object):
         self.overhead_terminate = overhead_terminate
         self.data = {}
         self.fields_types = {}
+        self.modes = modes
 
         if fields:
             for key, value in fields.items():
@@ -146,6 +147,10 @@ class Scheduler(object):
         self.overhead_terminate = scheduler_info.overhead_terminate
         self.data = scheduler_info.data
         self.monitor = Monitor(name="MonitorScheduler", sim=sim)
+        self.modes = scheduler_info.modes
+        self.R = []
+        self.response_times = []
+        self._lat = []
 
     def init(self):
         """
@@ -241,6 +246,24 @@ class Scheduler(object):
 
     def monitor_end_terminate(self, cpu):
         self.monitor.observe(SchedulerEndTerminateEvent(cpu))
+
+    @property
+    def last_activated_jobs(self):
+        if any(c.was_running for c in self.processors):
+            return list([int(c.was_running.task.id) for c in self.processors if c.was_running])
+        else:
+            return None
+
+    def add_response_time(self, job):
+        if len(self.R) > 0 and job.response_time:
+            rt = round(job.response_time, 6)
+            if rt != self.R[job.task.id]:
+                self.R[job.task.id] = rt
+                self.response_times.append(tuple(self.R))
+
+    def init_response_time(self):
+        if self.task_list and len(self.R) == 0:
+            self.R = [0] * len(self.task_list)
 
 
 def get_schedulers():

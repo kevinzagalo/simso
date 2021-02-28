@@ -3,7 +3,7 @@ from simso.core.etm.AbstractExecutionTimeModel \
 
 
 class FixedPenalty(AbstractExecutionTimeModel):
-    def __init__(self, sim, _):
+    def __init__(self, sim, nb_processors=None):  # nb_processors is a dumb variable
         self.sim = sim
         self.running = {}
         self.penalty = {}

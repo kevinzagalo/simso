@@ -89,6 +89,14 @@ class Parser(object):
                 list_activation_dates = sorted(
                     map(float, attr['list_activation_dates'].value.split(',')))
 
+            tmp = {}
+            for at in 'ACET', 'et_stddev', 'p_et':
+                if ',' in attr[at].value:
+                    tmp[at] = list(map(float, attr[at].value[1:-1].split(',')))
+                else:
+                    tmp[at] = list(map(float, attr[at].value[1:-1].split()))
+            tmp['p_et'][-1] = 1 - sum(tmp['p_et'][:-1])
+
             t = TaskInfo(
                 attr['name'].value,
                 int(attr['id'].value),
@@ -103,8 +111,8 @@ class Parser(object):
                 (self.cur_dir + '/' + attr['stack'].value,
                     self.cur_dir) if 'stack' in attr else ("", self.cur_dir),
                 float(attr['WCET'].value),
-                float(attr['ACET'].value) if 'ACET' in attr else 0,
-                float(attr['et_stddev'].value) if 'et_stddev' in attr else 0,
+                tmp['ACET'] if 'ACET' in attr else [0],
+                tmp['et_stddev'] if 'et_stddev' in attr else [0],
                 float(attr['deadline'].value),
                 float(attr['base_cpi'].value),
                 int(attr['followed_by'].value)
@@ -112,7 +120,9 @@ class Parser(object):
                 list_activation_dates,
                 int(float(attr['preemption_cost'].value))
                 if 'preemption_cost' in attr else 0,
-                data)
+                data,
+                tmp['p_et'] if 'p_et' in attr else [1]
+            )
             self.task_info_list.append(t)
 
     def _parse_processors(self):

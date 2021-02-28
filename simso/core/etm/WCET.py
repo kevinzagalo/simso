@@ -3,7 +3,7 @@ from simso.core.etm.AbstractExecutionTimeModel \
 
 
 class WCET(AbstractExecutionTimeModel):
-    def __init__(self, sim, _):
+    def __init__(self, sim, nb_processors=None):
         self.sim = sim
         self.executed = {}
         self.on_execute_date = {}
