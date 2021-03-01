@@ -34,7 +34,7 @@ class Model(Simulation):
         proc_info_list = configuration.proc_info_list
         self._cycles_per_ms = configuration.cycles_per_ms
         self.p = p
-        if 'EDF_CD' in configuration.scheduler_info.clas and not p:
+        if 'EDF_MD' in configuration.scheduler_info.clas and not p:
             configuration.scheduler_info.clas = "simso.schedulers.EDF_US"
             self.p = True
 
@@ -160,7 +160,7 @@ class Model(Simulation):
                 self.results.end()
         if self.p:
             X = array(self.scheduler.response_times)
-            self.configuration.scheduler_info.clas = "simso.schedulers.EDF_CD"
+            self.configuration.scheduler_info.clas = "simso.schedulers.EDF_MD"
             self.configuration.scheduler_info.modes = Modes(Mmax=self.configuration.Mmax).fit(X)
 
             self.__init__(self.configuration, p=True)

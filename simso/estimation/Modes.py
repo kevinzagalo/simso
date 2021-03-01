@@ -94,9 +94,9 @@ class Modes:
         if len(ind_X) > 1:
             a = dot(sigma[ind_X, k], inv_matrix(sigma_X))
             muk_X = dot(a, X[0, ind_X] - mu[ind_X]) + mu[k]
-            sigmak_X = sigma[k, k] + dot(a, sigma[k, ind_X])
+            sigmak_X = sigma[k, k] - dot(a, sigma[k, ind_X])
         elif len(ind_X) == 1:
             a = sigma[k, ind_X] / sigma_X
             muk_X = a * (X[ind_X] - mu[ind_X]) + mu[k]
-            sigmak_X = sigma[k, k] + a * sigma[k, ind_X]
+            sigmak_X = sigma[k, k] - a * sigma[k, ind_X]
         return muk_X, sigmak_X

@@ -20,7 +20,7 @@ class RM(Scheduler):
     def schedule(self, cpu):
         decision = None
         if self.ready_list:
-            # Get a free processor or a processor running a low priority job.
+            # Get a free processor or a processor running a low priority job
             key = lambda x: (
                 0 if x.running is None else 1,
                 -x.running.period if x.running else 0,
