@@ -1,12 +1,12 @@
 """
-Implementation of EDF-CD.
+Implementation of EDF-MD.
 """
 from simso.core import Scheduler
 from simso.schedulers import scheduler
 
 
-@scheduler("simso.schedulers.EDF_CD")
-class EDF_CD(Scheduler):
+@scheduler("simso.schedulers.EDF_MD")
+class EDF_MD(Scheduler):
 
     def init(self):
         self.ready_list = []
