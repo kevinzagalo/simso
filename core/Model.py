@@ -259,8 +259,9 @@ class Model(Simulation):
         kmeans_inertia_.fit(X=XX)
 
 
-#        if self.configuration.verbose:
-        dict_by_classes=kmeans_inertia_.dict_by_classes(X=XX)
+        #if self.configuration.verbose:
+
+        #dict_by_classes=kmeans_inertia_.dict_by_classes(X=XX)
         # r_inv_gaus = rInvGaussMixture(n_components=1)
         # for numero_classe in dict_by_classes:
         #     for task_name in dict_by_classes[numero_classe]:
