@@ -1,6 +1,7 @@
 # coding=utf-8
 
 from SimPy.Simulation import Simulation
+
 from simso.core.Processor import Processor
 from simso.core.Task import Task
 from simso.core.Timer import Timer
@@ -8,14 +9,19 @@ from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
 from simso.estimation.Modes import Modes
+from simso.estimation.Kmeans_inertia import *
+
+from rInverseGaussian.rInvGaussMixture import rInvGaussMixture
+
 from numpy import array, average, lcm, zeros, random
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class Model(Simulation):
     """
-    Main class for the simulation. It instantiate the various components
-    required by the simulation and run it.
+    Main class for the simulation.
+    It instantiate the various components required by the simulation and run it.
     """
 
     def __init__(self, configuration, callback=None, p=None):
@@ -56,6 +62,7 @@ class Model(Simulation):
             print("Unknowned Execution Time Model.", configuration.etm)
 
         self._task_list = []
+
         for task_info in task_info_list:
             self._task_list.append(Task(self, task_info))
 
@@ -166,90 +173,102 @@ class Model(Simulation):
             if not self.p and self.now() > 0:
                 self.results = Results(self)
                 self.results.end()
+        """
 
-        #miss = 0
-        #count1 = 0
-        #for task in self.scheduler.task_list:
-        #    print('Task {} : {} jobs, {} miss'.format(task.identifier, len(task._jobs), task.miss_count))
-        #    miss += task.miss_count
-        #    count1 += len(task._jobs)
-        #print('Total {} jobs, {} miss'.format(count1, miss))
 
-        #plt.hist(array(self.scheduler.idle_times[1:]) - array(self.scheduler.idle_times[:-1]) / self._cycles_per_ms)
-        #plt.axvline(lcm.reduce([int(t.period / self._cycles_per_ms) for t in self._task_list]))
-        #plt.title('Distribution of inter-idle times')
-        #plt.show()
+        plt.hist(array(self.scheduler.idle_times[1:]) - array(self.scheduler.idle_times[:-1]) / self._cycles_per_ms)
+        plt.axvline(lcm.reduce([int(t.period / self._cycles_per_ms) for t in self._task_list]))
+        plt.title('Distribution of inter-idle times')
+        plt.show()
 
-        #fig, ax = plt.subplots(figsize=(50, 20))
-        #ax.plot(self.scheduler.queue)
-        #ax.scatter(self.scheduler.idle_times, zeros(len(self.scheduler.idle_times)), marker='+', color='red')
-        #plt.title('trajectory of number of active jobs')
-        #plt.show()
+        fig, ax = plt.subplots(figsize=(50, 20))
+        ax.plot(self.scheduler.queue)
+        ax.scatter(self.scheduler.idle_times, zeros(len(self.scheduler.idle_times)), marker='+', color='red')
+        plt.title('trajectory of number of active jobs')
+        plt.show()
 
-        #lam = average(self.scheduler.queue)
+        lam = average(self.scheduler.queue)
 
-        #plt.hist(random.poisson(lam, size=len(self.scheduler.queue)), bin=50)
-        #plt.show()
+        plt.hist(random.poisson(lam, size=len(self.scheduler.queue)), bin=50)
+        plt.show()
 
-        #plt.hist(self.scheduler.queue, bin=50)
-        #plt.title('distribution of number of actives jobs')
-        #plt.show()
+        plt.hist(self.scheduler.queue, bin=50)
+        plt.title('distribution of number of actives jobs')
+        plt.show()
+
+        print(self.scheduler.preemption_classes)
+
+        if self.p:
+
+            X = array(self.scheduler.response_times)
+            for i, x in enumerate(X):
+                if all(x):
+                    X = X[i:, :]
+                    break
+
+            fig, ax = plt.subplots(2, len(self.scheduler.task_list), figsize=(25, 8))
+
+            for i, ax_ in enumerate(ax[0]):
+                ax_.hist(self.scheduler.task_list[i].response_times, bins=50)
+                ax_.set_title('max : {}, mean : {}'.format(max(self.scheduler.task_list[i].response_times),
+                                                           average(self.scheduler.task_list[i].response_times)))
+
+            self.configuration.scheduler_info.clas = "simso.schedulers.EDF_MD2"
+            self.configuration.scheduler_info.modes = Modes(Mmax=10).fit(X)
+
+            self.__init__(self.configuration, p=True)
+            self.initialize()
+            self.scheduler.init()
+            self.scheduler.init_response_time()
+
+            self.progress.start()
+
+            for cpu in self._processors:
+                self.activate(cpu, cpu.run())
+
+            for task in self._task_list:
+                self.activate(task, task.execute())
+
+            try:
+                self.simulate(until=self._duration)
+            finally:
+                self._etm.update()
+
+                if self.now() > 0:
+                    self.results = Results(self)
+                    self.results.end()
+                    miss = 0
+                    count2 = 0
+                    for task in self.scheduler.task_list:
+                        print('Task {} : {} jobs, {} miss'.format(task.identifier, len(task._jobs), task.miss_count))
+                        miss += task.miss_count
+                        count2 += len(task._jobs)
+                    print('Total {} jobs, {} miss'.format(count2, miss))
+        for i, ax_ in enumerate(ax[1]):
+            ax_.hist(self.scheduler.task_list[i].response_times, bins=50)
+            ax_.set_title('max : {}, mean : {}'.format(max(self.scheduler.task_list[i].response_times),
+                                                       average(self.scheduler.task_list[i].response_times)))
+
+        fig.suptitle('n1 = {}, n2 = {}'.format(count1, count2))
+        plt.show()
+        """
+
+        XX = array(self.scheduler.response_times)
+
+        kmeans_inertia_ = Kmeans_inertia(self.configuration.alpha)
+        kmeans_inertia_.fit(X=XX)
+
+
+#        if self.configuration.verbose:
+        dict_by_classes=kmeans_inertia_.dict_by_classes(X=XX)
+        # r_inv_gaus = rInvGaussMixture(n_components=1)
+        # for numero_classe in dict_by_classes:
+        #     for task_name in dict_by_classes[numero_classe]:
+        #         print("class:", numero_classe,
+        #           " task:", task_name,
+        #           " : ")
         #
-        #print(self.scheduler.preemption_classes)
-        #
-        #if self.p:
-        #
-        #    X = array(self.scheduler.response_times)
-        #    for i, x in enumerate(X):
-        #        if all(x):
-        #            X = X[i:, :]
-        #            break
-        #
-        #    fig, ax = plt.subplots(2, len(self.scheduler.task_list), figsize=(25, 8))
-        #
-        #    for i, ax_ in enumerate(ax[0]):
-        #        ax_.hist(self.scheduler.task_list[i].response_times, bins=50)
-        #        ax_.set_title('max : {}, mean : {}'.format(max(self.scheduler.task_list[i].response_times),
-        #                                                   average(self.scheduler.task_list[i].response_times)))
-        #
-        #    self.configuration.scheduler_info.clas = "simso.schedulers.EDF_MD2"
-        #    self.configuration.scheduler_info.modes = Modes(Mmax=10).fit(X)
-        #
-        #    self.__init__(self.configuration, p=True)
-        #    self.initialize()
-        #    self.scheduler.init()
-        #    self.scheduler.init_response_time()
-        #
-        #    self.progress.start()
-        #
-        #    for cpu in self._processors:
-        #        self.activate(cpu, cpu.run())
-        #
-        #    for task in self._task_list:
-        #        self.activate(task, task.execute())
-        #
-        #    try:
-        #        self.simulate(until=self._duration)
-        #    finally:
-        #        self._etm.update()
-        #
-        #        if self.now() > 0:
-        #            self.results = Results(self)
-        #            self.results.end()
-        #            miss = 0
-        #            count2 = 0
-        #            for task in self.scheduler.task_list:
-        #                print('Task {} : {} jobs, {} miss'.format(task.identifier, len(task._jobs), task.miss_count))
-        #                miss += task.miss_count
-        #                count2 += len(task._jobs)
-        #            print('Total {} jobs, {} miss'.format(count2, miss))
-        #
-        #    XX = array(self.scheduler.response_times)
-        #
-        #    for i, ax_ in enumerate(ax[1]):
-        #        ax_.hist(self.scheduler.task_list[i].response_times, bins=50)
-        #        ax_.set_title('max : {}, mean : {}'.format(max(self.scheduler.task_list[i].response_times),
-        #                                                   average(self.scheduler.task_list[i].response_times)))
-        #
-        #    fig.suptitle('n1 = {}, n2 = {}'.format(count1, count2))
-        #    plt.show()
+        #         tache_=dict_by_classes[numero_classe][task_name]
+        #         print(pd.DataFrame(tache_).describe())
+        #         r_inv_gaus.fit(X=tache_)
+        #         print(r_inv_gaus.bic(X=tache_))

@@ -38,11 +38,13 @@ class Configuration(object):
     of this class will be passed to the constructor of the
     :class:`Model <simso.core.Model.Model>` class.
     """
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, verbose=False,alpha=0.01):
         """
         Args:
             - `filename` A file can be used to initialize the configuration.
         """
+        self.verbose = verbose
+        self.alpha=alpha
         if filename:
             parser = Parser(filename)
             self.etm = parser.etm
