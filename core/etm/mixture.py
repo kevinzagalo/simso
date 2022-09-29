@@ -1,12 +1,8 @@
 from simso.core.etm.AbstractExecutionTimeModel \
     import AbstractExecutionTimeModel
-from numpy.random import exponential
-from math import ceil
-# TODO: the seed should be specified in order to evaluate on identical systems.
-# More precisely, the computation time of the jobs should remain the same.
+from sklearn.mixture import GaussianMixture
 
-
-class ACET(AbstractExecutionTimeModel):
+class mixture(AbstractExecutionTimeModel):
     def __init__(self, sim, _):
         self.sim = sim
         self.et = {}
@@ -18,14 +14,13 @@ class ACET(AbstractExecutionTimeModel):
 
     def update_executed(self, job):
         if job in self.on_execute_date:
-            self.executed[job] += (self.sim.now() - self.on_execute_date[job]
-                                   ) * job.cpu.speed
+            self.executed[job] += (self.sim.now() - self.on_execute_date[job]) * job.cpu.speed
 
             del self.on_execute_date[job]
 
     def on_activate(self, job):
         self.executed[job] = 0
-        self.et[job] = ceil(exponential(job.task.acet)) * self.sim.cycles_per_ms
+        self.et[job] = random.normalvariate(job.task.acet, job.task.et_stddev) * self.sim.cycles_per_ms
 
     def on_execute(self, job):
         self.on_execute_date[job] = self.sim.now()
