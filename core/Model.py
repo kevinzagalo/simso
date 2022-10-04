@@ -301,16 +301,8 @@ class Model(Simulation):
 
                     path = "./simso/core/get_parameters/"+name_file
 
-                    for truc in dict_params[numero_task][numero_class]:
-
-                        print(truc)
-
-                        print(dict_params[numero_task][numero_class][truc])
-
-                        print(type(dict_params[numero_task][numero_class][truc]))
-
-
-                    #with open(path, "w") as outfile: json.dump(dict_params[numero_task][numero_class], outfile)
+                    with open(path, "w") as outfile:
+                        json.dump(dict_params[numero_task][numero_class], outfile)
 
 
         if self.configuration.verbose:
