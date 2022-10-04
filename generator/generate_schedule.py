@@ -38,7 +38,7 @@ def generate_schedule(execution_times, periods, duration=1000):
 if __name__ == '__main__':
     n = 4
 
-    C = pd.read_csv('./simulations/execution_times.csv', sep=';')
+    C = pd.read_csv('../../simulations/execution_times.csv', sep=';')
     C = numpy.c_[C[["0"]], C[["1"]]]
     execution_times = []
     for x,y in C:
