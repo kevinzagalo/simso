@@ -45,7 +45,7 @@ if __name__ == '__main__':
         x = [int(xx) for xx in x[1:-1].split(',')]
         y = [float(yy) for yy in y[1:-1].split(',')]
         execution_times.append((x,y))
-    periods = pd.read_csv('./simulations/periods.csv')[["0"]].values.reshape(1, -1)[0]
+    periods = pd.read_csv('../../simulations/periods.csv')[["0"]].values.reshape(1, -1)[0]
     rates = [1/p for p in periods]
 
     print('Generating schedule...')
