@@ -20,17 +20,16 @@ class Kmeans_inertia:
         self.alpha=alpha
         self.model=None
 
-    def delete_0(self,X):
-        n=4
+    def delete_0(self, X):
+        n = 4
 
-        X_=[]
+        X_ = []
         for list_tasks in X:
             list_tasks_=numpy.delete(list_tasks, numpy.where(list_tasks == 0), axis=0)
-            if len(list_tasks_)==n:
+            if len(list_tasks_) == n:
                 X_.append(list_tasks_)
 
         return array(X_)
-
 
     def fit(self,X):
         from sklearn.cluster import KMeans
