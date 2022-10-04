@@ -17,11 +17,31 @@ from simso.estimation.Kmeans_inertia import *
 def generate_schedule(execution_times, periods, duration=1000):
     configuration = Configuration()
     configuration.verbose = 1
-    configuration.alpha=0.1
+    configuration.alpha = 0.1
     configuration.cycles_per_ms = 1
     configuration.duration = duration
     configuration.scheduler_info.clas = "simso.schedulers.RM"
     configuration.etm = 'pet'
+    for i, c in enumerate(execution_times):
+        configuration.add_task(name="T" + str(i), identifier=int(i + 1), period=periods[i],
+                               modes=c[0],
+                               proba=c[1], deadline=periods[i], abort_on_miss=True)
+
+    configuration.add_processor(name="CPU 1", identifier=1)
+    configuration.check_all()
+    model = Model(configuration)
+    model.run_model()
+
+    return model.scheduler
+
+def generate_schedule_exp(execution_times, periods, duration=1000):
+    configuration = Configuration()
+    configuration.verbose = 1
+    configuration.alpha = 0.1
+    configuration.cycles_per_ms = 1
+    configuration.duration = duration
+    configuration.scheduler_info.clas = "simso.schedulers.RM"
+    configuration.etm = 'acet'
     for i, c in enumerate(execution_times):
         configuration.add_task(name="T" + str(i), identifier=int(i + 1), period=periods[i],
                                modes=c[0],
