@@ -267,7 +267,7 @@ class Model(Simulation):
             dict_bics = copy.deepcopy(dict_by_tasks)
             dict_params = copy.deepcopy(dict_by_tasks)
 
-            list_n_components = list(range(1, 3))
+            list_n_components = list(range(1, 6))
 
             for task_name in dict_by_tasks:
 
