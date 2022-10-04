@@ -299,7 +299,7 @@ class Model(Simulation):
                 for (numero_class) in dict_params[numero_task]:
                     name_file = "".join([str(numero_task), "_", str(numero_class), ".json"])
 
-                    path = "./simso/core/json_files/"+name_file
+                    path = "./simso/core/get_parameters/"+name_file
 
                     for truc in dict_params[numero_task][numero_class]:
 
