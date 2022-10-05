@@ -290,6 +290,7 @@ class Model(Simulation):
                     r_inv_gauss.fit(X=tache_)
                     dict_params[task_name][numero_class]=r_inv_gauss.get_parameters()
 
+
             return dict_params
 
         def json_files(self):
