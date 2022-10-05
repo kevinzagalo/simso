@@ -267,7 +267,7 @@ class Model(Simulation):
             dict_bics = copy.deepcopy(dict_by_tasks)
             dict_params = copy.deepcopy(dict_by_tasks)
 
-            list_n_components = list(range(1, 3))
+            list_n_components = list(range(1, 6))
 
             for task_name in dict_by_tasks:
 
@@ -290,6 +290,7 @@ class Model(Simulation):
                     r_inv_gauss.fit(X=tache_)
                     dict_params[task_name][numero_class]=r_inv_gauss.get_parameters()
 
+
             return dict_params
 
         def json_files(self):
@@ -299,18 +300,10 @@ class Model(Simulation):
                 for (numero_class) in dict_params[numero_task]:
                     name_file = "".join([str(numero_task), "_", str(numero_class), ".json"])
 
-                    path = "./simso/core/json_files/"+name_file
+                    path = "./simso/core/get_parameters/"+name_file
 
-                    for truc in dict_params[numero_task][numero_class]:
-
-                        print(truc)
-
-                        print(dict_params[numero_task][numero_class][truc])
-
-                        print(type(dict_params[numero_task][numero_class][truc]))
-
-
-                    #with open(path, "w") as outfile: json.dump(dict_params[numero_task][numero_class], outfile)
+                    with open(path, "w") as outfile:
+                        json.dump(dict_params[numero_task][numero_class], outfile)
 
 
         if self.configuration.verbose:
