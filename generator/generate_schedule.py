@@ -14,14 +14,14 @@ from simso.generator.task_generator import generate_ptask_set
 from simso.estimation.Kmeans_inertia import *
 
 
-def generate_schedule(periods, execution_times=None,  duration=1000,
+def generate_schedule(periods, execution_times=None,  duration=1000, scheduler='RM',
                       etm='pet', acet=None, distributions=None, verbose=False):
     configuration = Configuration()
     configuration.verbose = verbose
     configuration.alpha = 0.1
     configuration.cycles_per_ms = 1
     configuration.duration = duration
-    configuration.scheduler_info.clas = "simso.schedulers.RM"
+    configuration.scheduler_info.clas = "simso.schedulers."+scheduler
     configuration.etm = etm
     if etm == 'pet':
         for i, c in enumerate(execution_times):
