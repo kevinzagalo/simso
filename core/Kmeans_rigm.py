@@ -43,26 +43,27 @@ class Kmeans_rigm:
         # centroids n column = task n
         # centroids n row = class n
 
-        dict_by_tasks = kmeans_inertia_.dict_by_tasks(X=XX)
+        dict_response_times_by_task = kmeans_inertia_.dict_response_times_by_task(X=XX)
         # dict = { task_n : { class_n : values ,...},...}
 
-        dict_by_tasks_centroids = kmeans_inertia_.dict_by_tasks(X=centroids)
+        dict_by_tasks_centroids = kmeans_inertia_.dict_response_times_by_task(X=centroids)
         # dict = { task_n : { class_n : centroid of values ,...},...}
 
-        for task_n in dict_by_tasks :
-            for class_n in dict_by_tasks[task_n]:
-                dict_by_tasks[task_n][class_n] = {"values":dict_by_tasks[task_n][class_n],"centroid":dict_by_tasks_centroids[task_n][class_n][0]}
+        for task_n in dict_response_times_by_task :
+            for class_n in dict_response_times_by_task[task_n]:
+                dict_response_times_by_task[task_n][class_n] = {"values":dict_response_times_by_task[task_n][class_n],
+                                                                "centroid":dict_by_tasks_centroids[task_n][class_n][0]}
 
-        dict_params = copy.deepcopy(dict_by_tasks)
+        dict_params = copy.deepcopy(dict_response_times_by_task)
 
         list_n_components = list(range(1, self.n_components_rigm_max))
-        print(dict_by_tasks)
 
-        for task_n in dict_by_tasks:
 
-            for class_n in dict_by_tasks[task_n]:
+        for task_n in dict_response_times_by_task:
 
-                task_ = dict_by_tasks[task_n][class_n]["values"]
+            for class_n in dict_response_times_by_task[task_n]:
+
+                task_ = dict_response_times_by_task[task_n][class_n]["values"]
                 list_bics = []
                 for n_components in list_n_components:
                     r_inv_gauss = rInvGaussMixture(n_components=n_components)
@@ -112,11 +113,5 @@ class Kmeans_rigm:
         parameters = self.get_parameters()
         class_predicted = self.kmeans.predict(tasks)[0]
 
-        for i in list(range(0, len(tasks[0]))):
+        for i in list(range(0, len(tasks[0] ))):
             print(parameters[str(i)][str(class_predicted)])
-
-
-
-
-
-
