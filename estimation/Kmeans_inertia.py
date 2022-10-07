@@ -23,21 +23,19 @@ class Kmeans_inertia:
     def delete_0(self, X):
         return array( [list_tasks for list_tasks in X if 0 not in list_tasks] )
 
-    def fit(self, X):
-        from sklearn.cluster import KMeans
-        n_clusters_max = 12
-        list_numbers_clusters = [*range(2, n_clusters_max)]
-        alpha = self.alpha
+    def fit(self, X, n_clusters_max = 12):
+
+        list_n_clusters = [*range(2, n_clusters_max)]
         inertia_o = numpy.square((X - numpy.array(X).mean(axis=0))).sum()
 
         list_best_ks = []
         model_test = KMeans(random_state = 0)
 
-        for k in list_numbers_clusters:
+        for k in list_n_clusters:
             model_test.n_clusters = k
             model_test.fit(X)
 
-            scaled_inertia = (model_test.inertia_ / inertia_o) + (alpha * k)
+            scaled_inertia = (model_test.inertia_ / inertia_o) + (self.alpha * k)
             list_best_ks.append((k, scaled_inertia))
 
         results = pd.DataFrame(list_best_ks, columns=['k', 'Scaled Inertia']).set_index('k')
@@ -50,7 +48,6 @@ class Kmeans_inertia:
         return self
 
     def predict(self, X):
-
         return self.model.predict(X)
 
 
@@ -79,7 +76,6 @@ class Kmeans_inertia:
 
 
     def get_centroids(self):
-
         return self.model.cluster_centers_
 
 
