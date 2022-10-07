@@ -14,38 +14,27 @@ from simso.generator.task_generator import generate_ptask_set
 from simso.estimation.Kmeans_inertia import *
 
 
-def generate_schedule(execution_times, periods, duration=1000):
+def generate_schedule(execution_times, periods, duration=1000, etm='pet', acet=None, evt=None):
     configuration = Configuration()
     configuration.verbose = 1
     configuration.alpha = 0.1
     configuration.cycles_per_ms = 1
     configuration.duration = duration
     configuration.scheduler_info.clas = "simso.schedulers.RM"
-    configuration.etm = 'pet'
-    for i, c in enumerate(execution_times):
-        configuration.add_task(name="T" + str(i), identifier=int(i + 1), period=periods[i],
-                               modes=c[0],
-                               proba=c[1], deadline=periods[i], abort_on_miss=True)
-
-    configuration.add_processor(name="CPU 1", identifier=1)
-    configuration.check_all()
-    model = Model(configuration)
-    model.run_model()
-
-    return model.scheduler
-
-def generate_schedule_exp(execution_times, periods, duration=1000):
-    configuration = Configuration()
-    configuration.verbose = 1
-    configuration.alpha = 0.1
-    configuration.cycles_per_ms = 1
-    configuration.duration = duration
-    configuration.scheduler_info.clas = "simso.schedulers.RM"
-    configuration.etm = 'acet'
-    for i, c in enumerate(execution_times):
-        configuration.add_task(name="T" + str(i), identifier=int(i + 1), period=periods[i],
-                               modes=c[0],
-                               proba=c[1], deadline=periods[i], abort_on_miss=True)
+    configuration.etm = etm
+    if etm == 'pet':
+        for i, c in enumerate(execution_times):
+            configuration.add_task(name="T"+str(i), identifier=int(i+1), period=periods[i],
+                                   modes=c[0],
+                                   proba=c[1], deadline=periods[i], abort_on_miss=True)
+    elif etm == 'acet':
+        for i, a in enumerate(acet):
+            configuration.add_task(name="T"+str(i), identifier=int(i+1), period=periods[i],
+                                   acet=a, deadline=periods[i], abort_on_miss=True)
+    elif etm == 'evt':
+        for i, params in enumerate(evt):
+            configuration.add_task(name="T"+str(i), identifier=int(i+1), period=periods[i],
+                                   modes=params, deadline=periods[i], abort_on_miss=True)
 
     configuration.add_processor(name="CPU 1", identifier=1)
     configuration.check_all()
