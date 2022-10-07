@@ -16,124 +16,51 @@ from simso.generator.task_generator import generate_ptask_set
 class Kmeans_inertia:
 
     def __init__(self,
-                 alpha=0.01):
+                 alpha=0.1):
         self.alpha=alpha
         self.model=None
 
     def delete_0(self, X):
-        n = 4
+        return array( [list_tasks for list_tasks in X if 0 not in list_tasks] )
 
-        X_ = []
-        for list_tasks in X:
-            list_tasks_=numpy.delete(list_tasks, numpy.where(list_tasks == 0), axis=0)
-            if len(list_tasks_) == n:
-                X_.append(list_tasks_)
-
-        return array(X_)
-
-    def fit(self,X):
+    def fit(self, X):
         from sklearn.cluster import KMeans
         n_clusters_max = 12
         list_numbers_clusters = [*range(2, n_clusters_max)]
-        alpha=self.alpha
+        alpha = self.alpha
         inertia_o = numpy.square((X - numpy.array(X).mean(axis=0))).sum()
 
         list_best_ks = []
-        model_test=KMeans()
-        model_test.random_state = 0
+        model_test = KMeans(random_state = 0)
+
         for k in list_numbers_clusters:
             model_test.n_clusters = k
             model_test.fit(X)
 
             scaled_inertia = (model_test.inertia_ / inertia_o) + (alpha * k)
             list_best_ks.append((k, scaled_inertia))
+
         results = pd.DataFrame(list_best_ks, columns=['k', 'Scaled Inertia']).set_index('k')
         best_k = results.idxmin()[0]
 
-        self.model=KMeans(n_clusters=best_k)
-        self.list_is_and_inertias=list_best_ks
+        self.model = KMeans(n_clusters=best_k)
+        self.list_is_and_inertias = list_best_ks
         self.model.fit(X)
 
         return self
 
-    def list_is_list_inertias(self):
+    def predict(self, X):
 
-        list_tuples = self.list_is_and_inertias
-
-        list_is = []
-        list_inertias = []
-        for tuple in list_tuples:
-            list_is.append(tuple[0])
-            list_inertias.append(tuple[1])
-
-        return list_is,list_inertias
-
-    def plot_inertia(self):
-
-        lists = self.list_is_list_inertias()
-        list_is = lists[0]
-        list_inertias = lists[1]
-
-        plt.plot(list_is, list_inertias)
-        plt.title(self.alpha)
-        plt.show()
-
-
-    def predict(self,X):
         return self.model.predict(X)
 
 
-    def barplot_classes(self,X):
+    def dict_by_tasks(self, X):
 
-        tasks=X
-        classes=self.model.predict(tasks)
-        plt.hist(classes)
-        plt.title(str(len(numpy.unique(classes))))
-        plt.show()
+        list_response_times = X
+        list_predicted_classes = self.model.predict(X)
 
-
-    def dict_by_classes(self,X):
-
-        list_jobs = X
-        list_classes = self.model.predict(X)
-
-
-        dict_by_classes = dict.fromkeys([str(x) for x in sorted(numpy.unique(list_classes))] )
-
-        for unique_class in list(dict_by_classes.keys()):
-            unique_class=str(unique_class)
-
-            dict_by_classes[unique_class] = dict.fromkeys([str(name_task) for name_task in range(0,
-                                                                                            len(list_jobs[0]))])
-
-            list_lists_tasks = []
-            for numero_task in list(dict_by_classes[unique_class].keys()):
-                numero_task=str(numero_task)
-                list_tasks = []
-                for job in list_jobs:
-                    list_tasks.append(job[numero_task])
-
-                list_lists_tasks.append(list_tasks)
-
-                list_values_at_index = []
-                for value_index in [index for index in range(len(list_classes)) if list_classes[index] == unique_class]:
-                    list_values_at_index.append(list_lists_tasks[numero_task][value_index])
-
-                dict_by_classes[unique_class][numero_task] = list_values_at_index
-
-        self.dict_by_classes = dict_by_classes
-        return self.dict_by_classes
-
-
-    def dict_by_tasks(self,X):
-
-        list_jobs = X
-        list_classes = self.model.predict(X)
-
-        dict_by_tasks = dict.fromkeys(list(range(0, len(list_jobs[0]))))
-        list_unique_classes = [unique_class for unique_class in sorted(numpy.unique(list_classes))]
-
-        list_unique_classes=[int(x) for x in list_unique_classes]
+        dict_by_tasks = dict.fromkeys(list(range(0, len(list_response_times[0]))))
+        list_unique_classes = [int(unique_class) for unique_class in sorted(numpy.unique(list_predicted_classes))]
 
         for task_name in dict_by_tasks:
 
@@ -142,23 +69,19 @@ class Kmeans_inertia:
             for unique_class in dict_by_tasks[task_name]:
 
                 list_values = []
-                for value_index in [index for index in range(len(list_classes)) if
-                                    int(list_classes[index]) == unique_class]:
-                    list_values.append(list_jobs[value_index][task_name])
+                for value_index in [index for index in range(len(list_predicted_classes)) if
+                                    int(list_predicted_classes[index]) == unique_class]:
+                    list_values.append(list_response_times[value_index][task_name])
 
                 dict_by_tasks[task_name][unique_class] = list_values
 
         return dict_by_tasks
 
-    def print_dict(self):
-        dict_by_classes=self.dict_by_classes
 
-        for numero_class in dict_by_classes:
-            for task_name in dict_by_classes[numero_class]:
-                print("class:", numero_class,
-                      " task:", task_name,
-                      " : ",
-                      dict_by_classes[numero_class][task_name])
+    def get_centroids(self):
+
+        return self.model.cluster_centers_
+
 
 
 

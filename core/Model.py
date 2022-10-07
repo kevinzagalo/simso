@@ -10,6 +10,7 @@ from simso.core.Logger import Logger
 from simso.core.results import Results
 from simso.estimation.Modes import Modes
 from simso.estimation.Kmeans_inertia import *
+from simso.core.Kmeans_rigm import Kmeans_rigm
 
 from rInverseGaussian.rInvGaussMixture import rInvGaussMixture
 
@@ -256,90 +257,24 @@ class Model(Simulation):
         """
 
 
-        def get_params(self):
-
-            kmeans_inertia_ = Kmeans_inertia(self.configuration.alpha)
-            XX = kmeans_inertia_.delete_0(array(self.scheduler.response_times))
-
-            kmeans_inertia_.fit(X=XX)
-
-            dict_by_tasks = kmeans_inertia_.dict_by_tasks(X=XX)
-            dict_bics = copy.deepcopy(dict_by_tasks)
-            dict_params = copy.deepcopy(dict_by_tasks)
-
-            list_n_components = list(range(1, 6))
-
-            for task_name in dict_by_tasks:
-
-                for numero_class in dict_by_tasks[task_name]:
-
-                    tache_ = dict_by_tasks[task_name][numero_class]
-                    list_bics = []
-
-                    for n_components in list_n_components:
-
-                        r_inv_gauss = rInvGaussMixture(n_components=n_components)
-                        r_inv_gauss.fit(X=tache_)
-                        list_bics.append(r_inv_gauss.bic(X=tache_))
-
-                    best_n_bytask_byclass = list_n_components[list_bics.index(max(list_bics))]
-
-                    dict_bics[task_name][numero_class] = best_n_bytask_byclass
-
-                    r_inv_gauss=rInvGaussMixture(n_components=best_n_bytask_byclass)
-                    r_inv_gauss.fit(X=tache_)
-                    dict_params[task_name][numero_class]=r_inv_gauss.get_parameters()
-
-
-            return dict_params
-
-        def json_files(self):
-            dict_params = get_params(self)
-
-            for numero_task in dict_params:
-                for (numero_class) in dict_params[numero_task]:
-                    name_file = "".join([str(numero_task), "_", str(numero_class), ".json"])
-
-                    path = "./simso/core/get_parameters/"+name_file
-
-                    with open(path, "w") as outfile:
-                        json.dump(dict_params[numero_task][numero_class], outfile)
-
-
         if self.configuration.verbose:
-            json_files(self)
+
+            kmeans_rigm=Kmeans_rigm()
+            kmeans_rigm.n_components_rigm_max=2
+            kmeans_rigm.write_json_files(kmeans_rigm.delete_0(self.scheduler.response_times))
+
+            # ex_taches = [4, 2, 4, 1]
+            # print(ex_taches)
+            #
+            # kmeans_rigm=Kmeans_rigm()
+            # kmeans_rigm.fit()
+            # print(kmeans_rigm.predict([ex_taches]))
+            #
+            # rigm=rInvGaussMixture(n_components=3)
+            # rigm.weights_ = [0.8177673468882556, 0.06431744120448127, 0.11791521190726449]
+            # rigm.modes_=[6.9297181241430215, 15.723227094811218, 10.75620238180887]
+            # rigm.cv=[0.1002594776052986, 0.22837929690259934, 0.24102344863770037]
+            #
+            # print(rigm.fit_predict(ex_taches))
 
 
-            # kmeans_inertia_ = Kmeans_inertia(self.configuration.alpha)
-            # XX = kmeans_inertia_.delete_0(array(self.scheduler.response_times))
-            # kmeans_inertia_.fit(X=XX)
-            #
-            # dict_by_tasks = kmeans_inertia_.dict_by_tasks(X=XX)
-            # dico_bics = copy.deepcopy(dict_by_tasks)
-            #
-            # list_n_components = list(range(1, 4))
-            # list_x = [str(x) for x in list_n_components]
-            #
-            # plt.figure(figsize=(15, 10))
-            # place = 1
-            # for task_name in dict_by_tasks:
-            #     plt.subplot(2, 2, place)
-            #     plt.ylabel("bic_value")
-            #     plt.xlabel("n components")
-            #     plt.title("".join(["task ", str(task_name)]))
-            #     for numero_class in dict_by_tasks[task_name]:
-            #
-            #         list_bics = []
-            #         for n_components in list_n_components:
-            #             r_inv_gauss = rInvGaussMixture(n_components=n_components)
-            #             tache_ = dict_by_tasks[task_name][numero_class]
-            #             r_inv_gauss.fit(X=tache_)
-            #             list_bics.append(r_inv_gauss.bic(X=tache_))
-            #         dico_bics[task_name][numero_class] = list_n_components[list_bics.index(max(list_bics))]
-            #
-            #         plt.plot(list_x, list_bics, label="".join(["class ", str(numero_class)]))
-            #         plt.legend()
-            #     place = place + 1
-            # plt.show()
-            # print(dico_bics)
-            #
