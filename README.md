@@ -6,7 +6,7 @@ The original project can be found here: https://github.com/MaximeCheramy/simso/t
  
 Probabilistic execution times can be simulated now with the ETM's `pET` and `continuousET`. The first one is for discrete distributions, the second one for any continuous distributions available in scipy : https://docs.scipy.org/doc/scipy/reference/stats.html#module-scipy.stats
 
-- For discrete distributions, the inputs to pass to the `configuration.add_task` are `modes for the values of execution times and `proba` for their associated probabilities.
+- For discrete distributions, the inputs to pass to the `configuration.add_task` are `modes` for the values of execution times and `proba` for their associated probabilities.
 - For continuous distributions, the input is `distribution`.
 
 The function `generator.generate_schedule` returns an instance of the schedule. For example, for discrete distributions one can simulate response times with :
