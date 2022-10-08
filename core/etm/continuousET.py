@@ -2,14 +2,15 @@ from simso.core.etm.AbstractExecutionTimeModel \
     import AbstractExecutionTimeModel
 
 from numpy import ceil  # import RandomState, randint
-from scipy.stats import genextreme as gev
 
-class EVT(AbstractExecutionTimeModel):
-    def __init__(self, sim, nb_processors=None):
+
+class continuousET(AbstractExecutionTimeModel):
+    def __init__(self, sim, distribution, nb_processors=None):
         self.sim = sim
         self.et = {}
         self.executed = {}
         self.on_execute_date = {}
+        self.distribution = distribution
         #self.random = RandomState(randint(10))
 
     def init(self):
@@ -24,7 +25,7 @@ class EVT(AbstractExecutionTimeModel):
 
     def on_activate(self, job):
         self.executed[job] = 0
-        self.et[job] = ceil(gev(**job._task.mode).rvs())
+        self.et[job] = ceil(job._task._task_info.distribution.rvs())
 
     def on_execute(self, job):
         self.on_execute_date[job] = self.sim.now()
