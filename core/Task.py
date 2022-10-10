@@ -20,7 +20,7 @@ class TaskInfo(object):
     def __init__(self, name, identifier, task_type, abort_on_miss, period,
                  activation_date, n_instr, mix, stack_file, wcet, acet,
                  et_stddev, deadline, base_cpi, followed_by,
-                 list_activation_dates, preemption_cost, data, modes, proba):
+                 list_activation_dates, preemption_cost, data, modes, proba, distribution):
         """
         :type name: str
         :type identifier: int
@@ -46,6 +46,7 @@ class TaskInfo(object):
         self.task_type = task_type
         self.period = period
         self.activation_date = activation_date
+        self.distribution = distribution
         self.n_instr = n_instr
         self.mix = mix
         self.wcet = wcet

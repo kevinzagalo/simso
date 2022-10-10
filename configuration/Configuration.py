@@ -220,8 +220,9 @@ class Configuration(object):
                 "Probabilities should be positive and sum up to 1."
 
             # Dimensions
-            assert len(task.modes) == len(task.proba), \
-                "Number of probabilities should be equal to number of modes."
+            if self.etm == 'pet':
+                assert len(task.modes) == len(task.proba), \
+                    "Number of probabilities should be equal to number of modes."
 
             if self.etm == "cache":
                 # stack
@@ -294,7 +295,7 @@ class Configuration(object):
     def add_task(self, name, identifier, task_type="Periodic",
                  abort_on_miss=True, period=10, activation_date=0,
                  n_instr=0, mix=0.5, stack_file="", wcet=0, acet=0,
-                 et_stddev=0, deadline=10, base_cpi=1.0, followed_by=None,
+                 et_stddev=0, deadline=10, base_cpi=1.0, followed_by=None, distribution=None,
                  list_activation_dates=[], preemption_cost=0, data=None, modes=[1], proba=[1.]):
         """
         Helper method to create a TaskInfo and add it to the list of tasks.
@@ -306,7 +307,7 @@ class Configuration(object):
                         activation_date, n_instr, mix,
                         (stack_file, self.cur_dir), wcet, acet, et_stddev,
                         deadline, base_cpi, followed_by, list_activation_dates,
-                        preemption_cost, data, modes, proba)
+                        preemption_cost, data, modes, proba, distribution)
         self.task_info_list.append(task)
         return task
 

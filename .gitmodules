@@ -1,0 +1,6 @@
+[submodule "estimation/rInverseGaussian"]
+	path = estimation/rInverseGaussian
+	url = git@github.com:kevinzagalo/rInverseGaussian.git
+[submodule "estimation/hypoexponential"]
+	path = estimation/hypoexponential
+	url = git@github.com:kevinzagalo/hypoexponential.git
