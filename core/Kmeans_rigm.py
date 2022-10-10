@@ -12,7 +12,7 @@ from simso.core.results import Results
 from simso.estimation.Modes import Modes
 from simso.estimation.Kmeans_inertia import *
 
-from rInverseGaussian.rInvGaussMixture import rInvGaussMixture
+from simso.estimation.rInverseGaussian.rInvGaussMixture import rInvGaussMixture
 
 import matplotlib.pyplot as plt
 from numpy import array

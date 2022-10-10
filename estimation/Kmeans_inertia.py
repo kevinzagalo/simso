@@ -41,24 +41,5 @@ class Kmeans_inertia:
     def predict(self, X):
         return self.model.predict(X)
 
-    def dict_response_times_by_task(self, X):
-        list_predicted_classes = self.model.predict(X)
-
-        dict_response_times_by_task = dict.fromkeys(list(range(0, len(X[0]))))
-        # { task_0: {}, ..., task_n: {} }
-
-        list_unique_classes = list(range(self.n_clusters))
-        # [0,...,n_clusters]
-
-        for task_n in dict_response_times_by_task:
-
-            dict_response_times_by_task[task_n] = dict.fromkeys(list_unique_classes)
-
-            for unique_class in dict_response_times_by_task[task_n]:
-
-                dict_response_times_by_task[task_n][unique_class] = [X[value_index][task_n] for value_index in [index for index in range(len(list_predicted_classes)) if int(list_predicted_classes[index]) == unique_class] ]
-
-        return dict_response_times_by_task
-
     def get_centroids(self):
         return self.model.cluster_centers_
