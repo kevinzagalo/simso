@@ -98,12 +98,9 @@ class Job(Process):
         self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.end_job(self)
         self._task.response_times.append(self.response_time)
-        if self.response_time > self.deadline:
-            self._task.deadline_misses += 1
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
         self._sim.scheduler.add_response_time(self)
-
 
     def _on_abort(self):
         self._on_stop_exec()

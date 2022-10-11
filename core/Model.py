@@ -8,18 +8,6 @@ from simso.core.Timer import Timer
 from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
-from simso.estimation.Modes import Modes
-from simso.estimation.Kmeans_inertia import *
-from simso.core.Kmeans_rigm import Kmeans_rigm
-
-from simso.estimation.rInverseGaussian.rInvGaussMixture import 
-rInvGaussMixture
-
-import matplotlib.pyplot as plt
-from numpy import array
-import copy
-import json
-#, average, lcm, zeros, random
 
 
 class Model(Simulation):
