@@ -263,18 +263,11 @@ class Scheduler(object):
             rt = job.response_time
             if rt != self.ARTT[job.task.id]:
                 self.ARTT[job.task.id] = rt
-                self.response_times.append(tuple(self.ARTT))
+                self.response_times.append((self.sim.now(), tuple(self.ARTT)))
 
     def init_response_time(self):
         if self.task_list and len(self.ARTT) == 0:
             self.ARTT = [0] * len(self.task_list)
-
-    def add_backlog(self):
-        for task in self.task_list:
-            if task.job.is_active():
-                self.backlog_trace[task.id] = task.job.ret
-            else:
-                self.backlog_trace[task.id] = 0
 
 
 def get_schedulers():

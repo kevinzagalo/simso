@@ -97,7 +97,7 @@ class Job(Process):
         self._end_date = self.sim.now()
         self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.end_job(self)
-        self._task.response_times.append(self.response_time)
+        self._task.response_times.append((self.sim.now(), self.response_time))
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
         self._sim.scheduler.add_response_time(self)

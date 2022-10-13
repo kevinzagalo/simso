@@ -4,22 +4,26 @@ from sklearn.cluster import KMeans
 
 class KmeansInertia:
 
-    def __init__(self, inertia=0.1, n_clusters_max=5):
+    def __init__(self, inertia, n_clusters_max=5, verbose=False):
         self.inertia_ = inertia
         self.model = None
         self.n_clusters_ = n_clusters_max
+        self.verbose = verbose
 
     def fit(self, X, y=None, sample_weight=None):
-        print(X)
         XX = array([x for x in X if all(x)])
         inertia_0 = ((XX - XX.mean(axis=0))**2).sum()
         model_list = []
         inertia_list = []
-        for k in range(1, self.n_clusters_):
+        for k in range(1, self.n_clusters_+1):
             kmeans = KMeans(k).fit(XX, sample_weight=sample_weight)
-            model_list.append(kmeans)
             inertia_list.append(kmeans.inertia_ / inertia_0 + self.inertia_ * k)
             model_list.append(kmeans)
+        if self.verbose:
+            import matplotlib.pyplot
+            matplotlib.pyplot.plot(range(1, self.n_clusters_+1), inertia_list)
+            matplotlib.pyplot.title(self.inertia_)
+            matplotlib.pyplot.show()
         best_k = argmin(inertia_list)
         self.model = model_list[best_k]
         return self
@@ -30,8 +34,18 @@ class KmeansInertia:
     def fit_predict(self, X):
         return self.fit(X).predict(X)
 
+    def get_parameters(self):
+        params = {}
+        params["model"] = self.model
+        params["model_params"] = self.model.get_params()
+        params["inertia_"] = self.inertia_
+        params["n_clusters_"] = self.model.n_clusters
+        params["cluster_centers_"] = self.model.cluster_centers_
+        return params
 
-if __name__ == '__main__':
-    X = [[1, 2, 3 ,4], [2,1,4,3],[1, 2, 3 ,1], [2,1,4,1],[1, 2, 3 ,4], [2,2,4,3]]
-    model = KmeansInertia(alpha=0.1)
-    print(model.fit_predict(X))
+    def set_parameters(self, params):
+        self.model = KMeans(n_clusters=params["n_clusters_"])
+        self.model.set_params(params["model_params"])
+        self.inertia_ = params["inertia_"]
+        self.n_clusters_ = params["n_clusters_"]
+        self.model.cluster_centers_ = params["cluster_centers_"]

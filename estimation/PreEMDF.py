@@ -22,7 +22,7 @@ class PreEMDF:
             n_tasks = self.n_tasks_
         else:
             _, n_tasks = X.shape
-        self.kmeans = KmeansInertia(alpha=self.inertia).fit(XX)
+        self.kmeans = KmeansInertia(inertia=self.inertia).fit(XX)
         clusters = self.kmeans.predict(XX)
 
         for k in set(clusters):
