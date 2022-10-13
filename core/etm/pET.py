@@ -1,7 +1,5 @@
-from simso.core.etm.AbstractExecutionTimeModel \
-    import AbstractExecutionTimeModel
-
-from numpy import random  # import RandomState, randint
+from simso.core.etm.AbstractExecutionTimeModel  import AbstractExecutionTimeModel
+from numpy import random
 
 
 class pET(AbstractExecutionTimeModel):

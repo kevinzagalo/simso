@@ -2,11 +2,11 @@ from simso.core import Model
 from simso.configuration import Configuration
 
 def generate_schedule(periods, execution_times=None,  duration=1000, scheduler='RM',
-                      etm='pet', acet=None, distributions=None, verbose=False):
+                      etm='pet', acet=None, distributions=None, verbose=False, cycles_per_ms=1):
     configuration = Configuration()
     configuration.verbose = verbose
     configuration.alpha = 0.1
-    configuration.cycles_per_ms = 1
+    configuration.cycles_per_ms = cycles_per_ms
     configuration.duration = duration
     configuration.scheduler_info.clas = "simso.schedulers."+scheduler
     configuration.etm = etm

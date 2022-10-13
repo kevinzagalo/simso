@@ -58,13 +58,24 @@ class PreEMDF:
 
     def get_parameters(self):
         params = {}
-        for k, centroids in enumerate(self.kmeans.cluter_centers_):
+        for k, centroids in enumerate(self.kmeans.model.cluster_centers_):
             params[k] = {}
-            params[k]["centroids"] = centroids
+            params[k]["centroids"] = list(centroids)
             for n in range(self.n_tasks_):
                 params[k][n] = self.models[k][n].get_parameters()
+
+        params["n_tasks_"]=self.n_tasks_
+        params["inertia"] = self.inertia
         return params
 
+    def set_parameters(self, params):
+        centroids = []
+        for k in params :
+            centroids.append(params[k]["centroids"])
+            for n in range(self.n_tasks_):
+                rInvGaussMixture_ = rInvGaussMixture(n_components=params[k][n]["n_components"])
+                rInvGaussMixture_.set_parameters(params=params[k][n])
+                self.models[k][n] = rInvGaussMixture_
 
-
-
+        self.n_tasks_ = params["n_tasks_"]
+        self.inertia = params["inertia"]
