@@ -64,18 +64,17 @@ class PreEMDF:
             for n in range(self.n_tasks_):
                 params[k][n] = self.models[k][n].get_parameters()
 
-        params["n_tasks_"]=self.n_tasks_
+        params["n_tasks_"] = self.n_tasks_
         params["inertia"] = self.inertia
         return params
 
     def set_parameters(self, params):
         centroids = []
-        for k in params :
+        for k in params:
             centroids.append(params[k]["centroids"])
             for n in range(self.n_tasks_):
                 rInvGaussMixture_ = rInvGaussMixture(n_components=params[k][n]["n_components"])
                 rInvGaussMixture_.set_parameters(params=params[k][n])
                 self.models[k][n] = rInvGaussMixture_
-
+        self.kmeans = KmeansInertia(params["inertia"])
         self.n_tasks_ = params["n_tasks_"]
-        self.inertia = params["inertia"]
