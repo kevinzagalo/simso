@@ -2,6 +2,8 @@ from simso.estimation.KmeansInertia import KmeansInertia
 from simso.estimation import rInvGaussMixture
 import numpy as np
 import json
+from scipy.stats import chi2
+
 
 class PreEMDF:
 
@@ -13,7 +15,8 @@ class PreEMDF:
         self.n_components_max = n_components_max
         self.n_tasks_ = n_tasks
         self.mixture_models = {}
-        self.quantiles = {}
+        self.dmp = {}
+        self.transitions = None
 
     def fit(self, X):
         XX = np.array([x for x in X if all(x)])
@@ -22,9 +25,12 @@ class PreEMDF:
         else:
             _, n_tasks = XX.shape
         self.n_tasks_ = n_tasks
+
+        ## Clustering
         self.kmeans_inertia = KmeansInertia(inertia=self.inertia).fit(XX)
         clusters = self.kmeans_inertia.predict(XX)
 
+        ## Markov transitions
         k = len(self.kmeans_inertia.model.cluster_centers_)
         self.transitions = np.zeros((k, k))
         for (i, j) in zip(clusters[:-1], clusters[1:]):
@@ -32,19 +38,27 @@ class PreEMDF:
         for i in range(k):
             self.transitions[i, :] /= self.transitions[i, :].sum()
 
+        ## Parametric estimation
         for k in set(clusters):
             self.mixture_models[k] = {}
-            self.quantiles[k] = {}
+            self.dmp[k] = {}
             for n in range(n_tasks):
                 bic_list = []
                 igmm_list = []
                 for n_components in range(1, self.n_components_max):
-                    igmm_list.append(rInvGaussMixture(n_components = n_components).fit(XX[clusters == k, n]))
+                    igmm_list.append(rInvGaussMixture(n_components=n_components).fit(XX[clusters == k, n]))
                     bic_list.append(igmm_list[-1].bic(XX[clusters == k, n]))
                 best = np.argmax(bic_list)
                 self.mixture_models[k][n] = igmm_list[best]
-                # self.quantiles[k][n] = igmm_list[best].quantile(self.alpha[n])
+                self.dmp[k][n] = {}
+                for component in range(1, best+1):
+                    self.dmp[k][n][component] = self.miss_proba(k, n, component)
         return self
+
+    def miss_proba(self, k, n_task, component):
+        q = self.mixture_models[k][n_task].quantile(self.alpha[n_task], component)
+        q_norm = (q - self.mixture_models[k][n_task]._means[component]) ** 2 / (self.mixture_models[k][n_task].cv_[0] * q)
+        return abs(int(q > self.mixture_models[k][n_task]._means[component]) - chi2.cdf(q_norm, df=1, loc= 0, scale=1))
 
     def fit_predict(self, X):
         return self.fit(X).predict(X)
@@ -72,8 +86,6 @@ class PreEMDF:
             for n in range(self.n_tasks_):
 
                 params[k][n] = self.mixture_models[k][n].get_parameters()
-
-
         params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
         params["inertia"] = self.inertia
