@@ -50,7 +50,7 @@ class PreEMDF:
                     bic_list.append(igmm_list[-1].bic(XX[clusters == k, n]))
                 best = np.argmax(bic_list)
                 self.mixture_models[k][n] = igmm_list[best]
-                self.dmp[k][n] = {}
+                self.dmp[k][n] = [0] * best
                 for component in range(1, best+1):
                     self.dmp[k][n][component] = self.miss_proba(k, n, component)
         return self
@@ -84,10 +84,8 @@ class PreEMDF:
             params[k] = {}
             params[k]["centroids"] = list(centroids)
             for n in range(self.n_tasks_):
-
                 params[k][n]["igm_param"] = self.mixture_models[k][n].get_parameters()
                 params[k][n]["dmp"] = self.dmp[k][n]
-
         params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
         params["inertia"] = self.inertia
@@ -115,5 +113,4 @@ class PreEMDF:
         with open(emdf_json_file) as f:
             self.set_parameters(json.load(f))
         return self
-
 
