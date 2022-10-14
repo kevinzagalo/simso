@@ -46,7 +46,6 @@ class KmeansInertia:
         return params
 
     def set_parameters(self, params):
-
         self.model = params["model"]
         self.model.set_params(**params["model_params"])
         self.inertia_ = params["inertia_"]

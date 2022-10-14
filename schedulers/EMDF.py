@@ -27,9 +27,6 @@ class EMDF(Scheduler):
         ready_jobs = [t.job for t in self.task_list
                       if t.is_active() and not t.job.is_running()]
         previous_cluster = self.clf.predict(self.ARTT)
-        quantiles = [0] * len(self.task_list)
-        for i, r in enumerate(self.ARTT):
-            quantiles[i] = self.clf.mixture_models[previous_cluster][i].predict_quantile(r)
 
         if ready_jobs:
             # Select a free processor or, if none,

@@ -1,9 +1,6 @@
 from simso.estimation.KmeansInertia import KmeansInertia
 from simso.estimation import rInvGaussMixture
-import numpy
-from numpy import array, argmax
-import copy
-import json
+import numpy as np
 
 class PreEMDF:
 
@@ -18,7 +15,7 @@ class PreEMDF:
         self.quantiles = {}
 
     def fit(self, X):
-        XX = array([x for x in X if all(x)])
+        XX = np.array([x for x in X if all(x)])
         if self.n_tasks_:
             n_tasks = self.n_tasks_
         else:
@@ -28,7 +25,7 @@ class PreEMDF:
         clusters = self.kmeans_inertia.predict(XX)
 
         k = len(self.kmeans_inertia.model.cluster_centers_)
-        self.transitions = numpy.zeros((k, k))
+        self.transitions = np.zeros((k, k))
         for (i, j) in zip(clusters[:-1], clusters[1:]):
             self.transitions[i, j] += 1
         for i in range(k):
@@ -43,9 +40,9 @@ class PreEMDF:
                 for n_components in range(1, self.n_components_max):
                     igmm_list.append(rInvGaussMixture(n_components = n_components).fit(XX[clusters == k, n]))
                     bic_list.append(igmm_list[-1].bic(XX[clusters == k, n]))
-                best = argmax(bic_list)
+                best = np.argmax(bic_list)
                 self.mixture_models[k][n] = igmm_list[best]
-                #self.quantiles[k][n] = igmm_list[best].quantile(self.alpha[n])
+                # self.quantiles[k][n] = igmm_list[best].quantile(self.alpha[n])
         return self
 
     def fit_predict(self, X):
@@ -54,19 +51,18 @@ class PreEMDF:
     def fit_predict_quantile(self, X):
         return self.fit(X).predict_quantile(X)
 
-    def _predict(self, X): # X=[1,2,3,4]
-        X=[X]
-        cluster = self.kmeans_inertia.predict(X)
+    def _predict(self, x): # X=[1,2,3,4]
+        cluster = self.kmeans_inertia.predict(x)
         task_component = [0] * self.n_tasks_
         for n in range(self.n_tasks_):
-            task_component[n] = self.mixture_models[cluster[0]][n].predict([X[0][n]])
+            task_component[n] = self.mixture_models[cluster][n].predict(x[n])
         return cluster, task_component
 
-
     def predict(self, X): # X=[[1,2,3,4],...,[]]
-        if array(X).shape == (self.n_tasks_,):
-            X = [X]
-        return [self._predict(x) for x in X]
+        if len(np.shape(X)) == 1:
+            return self._predict(X)
+        else:
+            return [self._predict(x) for x in X]
 
     def predict_quantile(self, X):
         cluster, task_component = self.predict(X)
