@@ -64,10 +64,10 @@ class PreEMDF:
         return self.fit(X).predict(X)
 
     def _predict(self, x): # X=[1,2,3,4]
-        cluster = self.kmeans_inertia.predict(x)
+        cluster = self.kmeans_inertia.predict([x])[0] #([x])
         task_component = [0] * self.n_tasks_
         for n in range(self.n_tasks_):
-            task_component[n] = self.mixture_models[cluster][n].predict(x[n])
+            task_component[n] = self.mixture_models[cluster][n].predict([x[n]])[0]
         return cluster, task_component
 
     def predict(self, X): # X=[[1,2,3,4],...,[]]
@@ -84,21 +84,23 @@ class PreEMDF:
             params[k] = {}
             params[k]["centroids"] = list(centroids)
             for n in range(self.n_tasks_):
+                params[k][n] = {}
                 params[k][n]["igm_param"] = self.mixture_models[k][n].get_parameters()
                 params[k][n]["dmp"] = self.dmp[k][n]
-        params["kmeans_params"] = self.kmeans_inertia.get_parameters()
+        # params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
         params["inertia"] = self.inertia
         return params
 
     def set_parameters(self, params):
         self.n_tasks_ = params["n_tasks_"]
-        self.n_clusters_ = params["kmeans_params"]["n_clusters_"]
+        self.n_clusters_ = len(params.keys())
         self.kmeans_inertia = KmeansInertia(inertia=self.inertia)
-        self.kmeans_inertia.set_parameters(params["kmeans_params"])
+        # self.kmeans_inertia.set_parameters(params["kmeans_params"])
         self.mixture_models = {}
         for k in range(self.n_clusters_):
             self.mixture_models[k] = {}
+            self.mixture_models[k]["centroids"] = params[k]["centroids"]
             for n in range(self.n_tasks_):
                 self.mixture_models[k][n]["igm_param"] = rInvGaussMixture(n_components=params[k][n]["n_components"])
                 self.mixture_models[k][n]["igm_param"] .set_parameters(params[k][n]["igm_param"])
