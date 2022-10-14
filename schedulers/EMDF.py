@@ -13,7 +13,7 @@ class EMDF(Scheduler):
     def init(self):
         with open('./EMDF.json') as f:
             dict_params = json.load(f)
-        self.clf = PreEMDF(n_tasks=len(self.task_list))
+        self.clf = PreEMDF()
         self.clf.set_parameters(dict_params)
 
     def on_activate(self, job):

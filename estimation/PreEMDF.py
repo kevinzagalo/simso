@@ -48,9 +48,6 @@ class PreEMDF:
     def fit_predict(self, X):
         return self.fit(X).predict(X)
 
-    def fit_predict_quantile(self, X):
-        return self.fit(X).predict_quantile(X)
-
     def _predict(self, x): # X=[1,2,3,4]
         cluster = self.kmeans_inertia.predict(x)
         task_component = [0] * self.n_tasks_
@@ -61,12 +58,10 @@ class PreEMDF:
     def predict(self, X): # X=[[1,2,3,4],...,[]]
         if len(np.shape(X)) == 1:
             return self._predict(X)
+        elif np.shape(X)[0] == 1:
+            return self._predict(X)
         else:
             return [self._predict(x) for x in X]
-
-    def predict_quantile(self, X):
-        cluster, task_component = self.predict(X)
-        return self.quantiles[cluster][task_component]
 
     def get_parameters(self):
         params = {}
