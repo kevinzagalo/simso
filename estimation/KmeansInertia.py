@@ -15,10 +15,12 @@ class KmeansInertia:
         inertia_0 = ((XX - XX.mean(axis=0))**2).sum()
         model_list = []
         inertia_list = []
+
         for k in range(1, self.n_clusters_+1):
             kmeans = KMeans(n_clusters=k).fit(XX, sample_weight=sample_weight)
             inertia_list.append(kmeans.inertia_ / inertia_0 + self.inertia_ * k)
             model_list.append(kmeans)
+
         if self.verbose:
             import matplotlib.pyplot
             matplotlib.pyplot.plot(range(1, self.n_clusters_+1), inertia_list)
@@ -51,5 +53,11 @@ class KmeansInertia:
         self.n_clusters_ = params["n_clusters_"]
         self.model.cluster_centers_ = params["cluster_centers_"]
 
-
+if __name__ == "__main__":
+    r_t=array([(2.0, 3.0, 5.0, 6.0), (1.0, 3.0, 5.0, 6.0), (1.0, 1.0, 5.0, 6.0),
+           (2.0, 2.0, 3.0, 5.0), (2.0, 2.0, 3.0, 8.0),
+           (2.0, 2.0, 9.0, 8.0)])
+    for alpha in  [0.00000001,0.001,0.01,0.1,0.9]:
+        km = KmeansInertia(inertia=alpha,verbose=1)
+        km.fit(r_t)
 
