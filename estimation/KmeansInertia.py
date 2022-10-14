@@ -16,7 +16,7 @@ class KmeansInertia:
         model_list = []
         inertia_list = []
         for k in range(1, self.n_clusters_+1):
-            kmeans = KMeans(k).fit(XX, sample_weight=sample_weight)
+            kmeans = KMeans(n_clusters=k).fit(XX, sample_weight=sample_weight)
             inertia_list.append(kmeans.inertia_ / inertia_0 + self.inertia_ * k)
             model_list.append(kmeans)
         if self.verbose:
@@ -44,8 +44,12 @@ class KmeansInertia:
         return params
 
     def set_parameters(self, params):
-        self.model = KMeans(n_clusters=params["n_clusters_"])
-        self.model.set_params(params["model_params"])
+
+        self.model = params["model"]
+        self.model.set_params(**params["model_params"])
         self.inertia_ = params["inertia_"]
         self.n_clusters_ = params["n_clusters_"]
         self.model.cluster_centers_ = params["cluster_centers_"]
+
+
+
