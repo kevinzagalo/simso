@@ -1,6 +1,6 @@
 from simso.estimation.KmeansInertia import KmeansInertia
 from simso.estimation import rInvGaussMixture
-import numpy as np
+import numpy
 from numpy import array, argmax
 import copy
 import json
@@ -28,7 +28,7 @@ class PreEMDF:
         clusters = self.kmeans_inertia.predict(XX)
 
         k = len(self.kmeans_inertia.model.cluster_centers_)
-        self.transitions = np.zeros((k, k))
+        self.transitions = numpy.zeros((k, k))
         for (i, j) in zip(clusters[:-1], clusters[1:]):
             self.transitions[i, j] += 1
         for i in range(k):
@@ -54,20 +54,19 @@ class PreEMDF:
     def fit_predict_quantile(self, X):
         return self.fit(X).predict_quantile(X)
 
-    def _predict(self, x): # x=[1,2,3,4]
-        x=[x]
-        cluster = self.kmeans_inertia.predict(x)
+    def _predict(self, X): # X=[1,2,3,4]
+        X=[X]
+        cluster = self.kmeans_inertia.predict(X)
         task_component = [0] * self.n_tasks_
         for n in range(self.n_tasks_):
-            task_component[n] = self.mixture_models[cluster[0]][n].predict([x[0][n]])
+            task_component[n] = self.mixture_models[cluster[0]][n].predict([X[0][n]])
         return cluster, task_component
 
 
     def predict(self, X): # X=[[1,2,3,4],...,[]]
-        if len(np.shape(X)) == 1:
-            return self._predict(x=X)
-        else :
-            return [self._predict(x=x) for x in X]
+        if array(X).shape == (self.n_tasks_,):
+            X = [X]
+        return [self._predict(x) for x in X]
 
     def predict_quantile(self, X):
         cluster, task_component = self.predict(X)
@@ -79,7 +78,11 @@ class PreEMDF:
             params[k] = {}
             params[k]["centroids"] = list(centroids)
             for n in range(self.n_tasks_):
+
                 params[k][n] = self.mixture_models[k][n].get_parameters()
+                # rInvGaussMixture_ = rInvGaussMixture(self.mixture_models[k][n])
+                # params[k][n] = rInvGaussMixture_.get_parameters()
+                # print(self.mixture_models[k][n])
 
         params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
@@ -98,9 +101,4 @@ class PreEMDF:
                 self.mixture_models[k][n] = rInvGaussMixture(n_components=params[k][n]["n_components"])
                 self.mixture_models[k][n].set_parameters(params[k][n])
 
-    def save(self):
-        with open('EMDF.json', 'w') as f:
-            json.dump(self.get_parameters(), f)
 
-    def load(self, json_file):
-        self.set_parameters(params=json.load(open(json_file)))

@@ -263,7 +263,7 @@ class Scheduler(object):
             rt = job.response_time
             if rt != self.ARTT[job.task.id]:
                 self.ARTT[job.task.id] = rt
-                self.response_times.append((self.sim.now(), tuple(self.ARTT)))
+                self.response_times.append(tuple(self.ARTT))
 
     def init_response_time(self):
         if self.task_list and len(self.ARTT) == 0:
