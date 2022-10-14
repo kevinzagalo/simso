@@ -104,7 +104,6 @@ class PreEMDF:
                 self.mixture_models[k][n]["igm_param"] .set_parameters(params[k][n]["igm_param"])
                 self.dmp[k][n] = params[k][n]["dmp"]
 
-
     def save(self):
         with open('EMDF.json', 'w') as f:
             json.dump(self.get_parameters(), f)
