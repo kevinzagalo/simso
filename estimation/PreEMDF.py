@@ -85,7 +85,9 @@ class PreEMDF:
             params[k]["centroids"] = list(centroids)
             for n in range(self.n_tasks_):
 
-                params[k][n] = self.mixture_models[k][n].get_parameters()
+                params[k][n]["igm_param"] = self.mixture_models[k][n].get_parameters()
+                params[k][n]["dmp"] = self.dmp[k][n]
+
         params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
         params["inertia"] = self.inertia
@@ -100,16 +102,18 @@ class PreEMDF:
         for k in range(self.n_clusters_):
             self.mixture_models[k] = {}
             for n in range(self.n_tasks_):
-                self.mixture_models[k][n] = rInvGaussMixture(n_components=params[k][n]["n_components"])
-                self.mixture_models[k][n].set_parameters(params[k][n])
+                self.mixture_models[k][n]["igm_param"] = rInvGaussMixture(n_components=params[k][n]["n_components"])
+                self.mixture_models[k][n]["igm_param"] .set_parameters(params[k][n]["igm_param"])
+                self.dmp[k][n] = params[k][n]["dmp"]
 
 
     def save(self):
         with open('EMDF.json', 'w') as f:
             json.dump(self.get_parameters(), f)
 
-    def load(self,emdf_json_file):
-        self.set_parameters(json.load(open(emdf_json_file)))
+    def load(self, emdf_json_file):
+        with open(emdf_json_file) as f:
+            self.set_parameters(json.load(f))
         return self
 
 
