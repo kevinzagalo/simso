@@ -1,6 +1,7 @@
 from simso.estimation.KmeansInertia import KmeansInertia
 from simso.estimation import rInvGaussMixture
 import numpy as np
+import json
 
 class PreEMDF:
 
@@ -71,9 +72,7 @@ class PreEMDF:
             for n in range(self.n_tasks_):
 
                 params[k][n] = self.mixture_models[k][n].get_parameters()
-                # rInvGaussMixture_ = rInvGaussMixture(self.mixture_models[k][n])
-                # params[k][n] = rInvGaussMixture_.get_parameters()
-                # print(self.mixture_models[k][n])
+
 
         params["kmeans_params"] = self.kmeans_inertia.get_parameters()
         params["n_tasks_"] = self.n_tasks_
@@ -91,5 +90,14 @@ class PreEMDF:
             for n in range(self.n_tasks_):
                 self.mixture_models[k][n] = rInvGaussMixture(n_components=params[k][n]["n_components"])
                 self.mixture_models[k][n].set_parameters(params[k][n])
+
+
+    def save(self):
+        with open('EMDF.json', 'w') as f:
+            json.dump(self.get_parameters(), f)
+
+    def load(self,emdf_json_file):
+        self.set_parameters(json.load(open(emdf_json_file)))
+        return self
 
 
