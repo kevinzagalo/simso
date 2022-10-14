@@ -4,6 +4,7 @@ import numpy
 from numpy import array, argmax
 import copy
 import json
+from scipy.optimize import root_scalar
 
 class PreEMDF:
 
@@ -35,7 +36,7 @@ class PreEMDF:
             self.transitions[i, :] /= self.transitions[i, :].sum()
 
         for k in set(clusters):
-            self.mixture_models[k] = {}
+            self.models[k] = {}
             self.quantiles[k] = {}
             for n in range(n_tasks):
                 bic_list = []
@@ -43,9 +44,9 @@ class PreEMDF:
                 for n_components in range(1, self.n_components_max):
                     igmm_list.append(rInvGaussMixture(n_components = n_components).fit(XX[clusters == k, n]))
                     bic_list.append(igmm_list[-1].bic(XX[clusters == k, n]))
-                best = argmax(bic_list)
-                self.mixture_models[k][n] = igmm_list[best]
-                #self.quantiles[k][n] = igmm_list[best].quantile(self.alpha[n])
+                best = np.argmax(bic_list)
+                self.models[k][n] = igmm_list[best]
+                # self.quantiles[k][n] = igmm_list[best].quantile(self.alpha[n])
         return self
 
     def fit_predict(self, X):
@@ -59,7 +60,7 @@ class PreEMDF:
         cluster = self.kmeans_inertia.predict(X)
         task_component = [0] * self.n_tasks_
         for n in range(self.n_tasks_):
-            task_component[n] = self.mixture_models[cluster[0]][n].predict([X[0][n]])
+            task_component[n] = self.models[cluster][n].predict(X[n])
         return cluster, task_component
 
 

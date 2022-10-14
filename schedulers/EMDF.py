@@ -4,11 +4,18 @@ architectures.
 """
 from simso.core import Scheduler
 from simso.schedulers import scheduler
+from simso.estimation.PreEMDF import PreEMDF
 import json
 
-@scheduler("simso.schedulers.EDF")
+@scheduler("simso.schedulers.EMDF")
 class EMDF(Scheduler):
     """Earliest Modal Deadline First"""
+    def init(self):
+        with open('./EMDF.json') as f:
+            dict_params = json.load(f)
+        self.clf = PreEMDF(n_tasks=len(self.task_list))
+        self.clf.set_parameters(dict_params)
+
     def on_activate(self, job):
         job.cpu.resched()
 
@@ -19,7 +26,10 @@ class EMDF(Scheduler):
         # List of ready jobs not currently running:
         ready_jobs = [t.job for t in self.task_list
                       if t.is_active() and not t.job.is_running()]
-        X = self.response_times[-1]
+        previous_cluster = self.clf.predict(self.ARTT)
+        quantiles = [0] * len(self.task_list)
+        for i, r in enumerate(self.ARTT):
+            quantiles[i] = self.clf.mixture_models[previous_cluster][i].predict_quantile(r)
 
         if ready_jobs:
             # Select a free processor or, if none,
