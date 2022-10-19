@@ -140,12 +140,9 @@ class Scheduler(object):
         Methods:
         """
         self.response_times = []
-        self.idle_times = [0]
-        self.preemption_classes = set()
-        self.queue = []
+        self.clf = None
         self.modes = scheduler_info.modes
         self.ARTT = []
-        self.backlog_trace = []
         self.sim = sim
         self.processors = []
         self.task_list = []
@@ -263,7 +260,7 @@ class Scheduler(object):
             rt = job.response_time
             if rt != self.ARTT[job.task.id]:
                 self.ARTT[job.task.id] = rt
-                self.response_times.append(tuple(self.ARTT))
+                self.response_times.append((job.task.id, tuple(self.ARTT)))
 
     def init_response_time(self):
         if self.task_list and len(self.ARTT) == 0:
