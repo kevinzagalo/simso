@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from numpy import random, array, where, mean, convolve, exp, lcm, random, linspace, cumsum, log, sqrt, std, arange
 from scipy.stats import lognorm, norm, expon, uniform, poisson
 from scipy.signal import convolve
@@ -7,56 +8,41 @@ import bisect
 from tqdm import tqdm, trange
 
 
-def make_instance(offsets, periods, deadlines, return_int=False, T=1, exp=False, n=None):
-    jobs = []
-    H = lcm.reduce(periods)
-    if not n and not exp:
-        n = T // H
-    M = [H // p for p in periods]
+def make_instance(offsets, periods, deadlines, T=None):
+    if T is None:
+        T = lcm.reduce(periods)
+    M = [T // p for p in periods]
 
-    if exp:
-        for i, (o, p, d) in enumerate(zip(offsets, periods, deadlines)):
-            jobs.append((i, 0, d))
-            U = sorted(uniform(0, T).rvs(T//periods[i]))
-            if return_int:
-                U = [int(u) + 1 if u > 0 else 0 for u in U]
-            for uu in U:
-                jobs.append((i, uu, uu + d))
-    else:
-        jobs = [(i, o + k * p, o + k * p + d)
-                for i, (o, p, d) in enumerate(zip(offsets, periods, deadlines)) for k in range(1, n * M[i])]
+    jobs = [(i, o + k * p, o + k * p + d)
+                for i, (o, p, d) in enumerate(zip(offsets, periods, deadlines)) for k in range(1, M[i])]
     return sorted(jobs, key=lambda j: (j[1], j[0]))
 
 
-def conv(w, c, k=0, ff=False):
+def conv(w, c, k=0):
     assert len(w[0]) == len(w[1]) and len(c[0]) == len(c[1]), 'values and prob not matching'
     p = []
     r = []
     prod_values = list(product(w[0][k:], c[0]))
 
-    if ff:
-        return [x+y for (x,y) in prod_values], convolve(w[1][k:], c[1], method='fft', mode='valid')
-    else:
-
-        for x, y in prod_values:
-            #if x+y in r:
-            #    pass
-            #else:
-            #    r.append(x+y)
-            j1 = bisect.bisect_left(w[0][k:], x)
-            j2 = bisect.bisect_left(c[0], y)
-            #j1 = int(where(array(w[0][k:]) == x)[0][0])
-            #j2 = int(where(array(c[0]) == y)[0][0])
-            if x + y in r:
-                j = bisect.bisect_left(array(r), x+y)
-                #j = int(where(array(r) == x+y)[0][0])
-                p[j] += w[1][k:][j1] * c[1][j2]
-            else:
-                j = bisect.bisect_left(r, x+y)
-                r.insert(j, x+y)
-                p.insert(j, w[1][k:][j1] * c[1][j2])
-                #p.append(array(w[1][k:])[j1] * array(c[1])[j2])
-        return r, p  # convolve(w[1], c[1])
+    for x, y in prod_values:
+        #if x+y in r:
+        #    pass
+        #else:
+        #    r.append(x+y)
+        j1 = bisect.bisect_left(w[0][k:], x)
+        j2 = bisect.bisect_left(c[0], y)
+        #j1 = int(where(array(w[0][k:]) == x)[0][0])
+        #j2 = int(where(array(c[0]) == y)[0][0])
+        if x + y in r:
+            j = bisect.bisect_left(array(r), x+y)
+            #j = int(where(array(r) == x+y)[0][0])
+            p[j] += w[1][k:][j1] * c[1][j2]
+        else:
+            j = bisect.bisect_left(r, x+y)
+            r.insert(j, x+y)
+            p.insert(j, w[1][k:][j1] * c[1][j2])
+            #p.append(array(w[1][k:])[j1] * array(c[1])[j2])
+    return r, p  # convolve(w[1], c[1])
 
 
 def diaz_conv(r, delta, c):
@@ -175,58 +161,56 @@ def stationary_backlog(offsets, execution_times, periods, deadlines, tol=1e-3, e
     return w
 
 
-def diaz(offsets, execution_times, periods, deadlines, n=1, sched='RM'):
+def diaz(offsets, execution_times, periods, deadlines, T ,sched='RM'):
     ### COMPUTE INSTANCE  #################################################
-    instance = make_instance(offsets, periods, deadlines, n=n)  # Instance sorted by release and deadline
-    H = lcm.reduce(periods)
-    N = [H // p for p in periods]
-
+    instance = make_instance(offsets, periods, deadlines, T=T)  # Instance sorted by release and deadline
+    #H = lcm.reduce(periods)
+    #N = [H // p for p in periods]
+    #n = len(periods)
     ### INIT DIAZ ALGO  ###################################################
-    RT = dict((j, []) for j, _ in execution_times.items())
-    RT[instance[0][0]].append(execution_times[instance[0][0]])  # First element of instance is not preempted and backlog is zero
-
+    RT = {}
+    RT[instance[0][0]] = execution_times[instance[0][0]]  # First element of instance is not preempted and backlog is zero
+    check = [0]*len(periods)
+    check[0] = 1
     ### RESPONSE TIMES  ###################################################
     for t, job in enumerate(instance[1:]):  # job index in instance[1:] is t+1
         task, release, deadline = job
-
+        if check[task]:
+            continue
         # COMPUTE BACKLOG + EXECUTION TIME ################################
         #bl = backlogs(w, level=task, delta=release - instance[t][1])
         rt0 = execution_times[task]
 
         # COMPUTE PREEMPTIONS #############################################
-        if sched == 'RM':
-            HP = [j for j in instance if periods[j[0]] < periods[task] and deadline >= j[1] >= release]
-        elif sched == 'EDF':
-            HP = [j for j in instance[t + 2:] if j[2] < deadline]
-        else:
-            HP = [j for j in instance[t + 2:] if j[0] <= task]
+        HP = [j for j in instance if j[0] < task and (j[2] > release or j[1] < deadline)]
 
-        for hp_task, hp_release, _ in HP:
-            if release - hp_release < deadlines[task]:
-                rt0 = diaz_conv(rt0, hp_release - release, execution_times[hp_task])
+        for hp_task, hp_release, hp_deadline in HP:
+            if hp_release < release:
+                rt0 = diaz_conv(RT[hp_task], release - hp_release, execution_times[hp_task])
+                check[task] += 1
             else:
-                break
+                rt0 = conv(rt0, execution_times[hp_task])
+                check[task] += 1
 
         # COMPUTE WORKLOAD DISTRIBUTION ###################################
-        w[task] = update_workload(w[task], execution_times[task], release - instance[t][1])  # release - previous release
-        RT[task].append(rt0)
-
-    #return dict((task, R_task[0]) for task, R_task in RT.items())
+        #w[task] = update_workload(w[task], execution_times[task], release - instance[t][1])  # release - previous release
+        RT[task] = rt0
+    return RT, all(check)
     ## COMPUTE DISTRIBUTION OF R_i as the mean of the pdfs
-    Z = dict((task, {}) for task in RT.keys())
-    for task, R_task in RT.items():
-        values = []
-        for (x, y) in R_task:
-            values += x
-        values = list(set(values))
-        Z[task] = dict((v, 0) for v in values)
-        m = len(R_task)
-        for (x,y) in R_task:
-            for xx, yy in zip(x, y):
-                Z[task][xx] += yy
-        for xx in Z[task].keys():
-            Z[task][xx] /= m
-    return dict((task, (list(Z[task].keys()), list(Z[task].values()))) for task, R_task in RT.items())
+    #Z = dict((task, {}) for task in RT.keys())
+    #for task, R_task in RT.items():
+    #    values = []
+    #    for (x, y) in R_task:
+    #        values += x
+    #    values = list(set(values))
+    #    Z[task] = dict((v, 0) for v in values)
+    #    m = len(R_task)
+    #    for (x,y) in R_task:
+    #        for xx, yy in zip(x, y):
+    #            Z[task][xx] += yy
+    #    for xx in Z[task].keys():
+    #        Z[task][xx] /= m
+    #return dict((task, (list(Z[task].keys()), list(Z[task].values()))) for task, R_task in RT.items())
 
 
 def backlog_cdf(x, t, execution_times, periods):
@@ -244,79 +228,92 @@ def backlog_pdf(x, t, execution_times, periods):
     return norm.pdf(x, t * (sum(U)-1), sigma)
 
 
-if __name__ == '__main__':
 
-    from simso.generator.task_generator import generate_ptask_set
-    from dSumExponential.sum_exponential import SumExponential
-    from statsmodels.distributions.empirical_distribution import ECDF
-
-    n = 3
-    C, periods = generate_ptask_set(n, 1.2, periodmin=10, periodmax=30)
-    execution_times = dict((i, c) for i, c in enumerate(C))
-    assert all((len(c[0]) == len(c[1]) for c in C)), 'values and prob not matching'
-
-    offsets = [0] * n
-    #periods = list(range(4, 20, 2))[:n]
-    H = lcm.reduce(periods)
-    deadlines = periods #(9, 12, 18)
-
-    #var_C = [ sum([ cc * cc * c[1][i] for cc in c[0]]) / periods[i] for i, c in enumerate(C) ]
-    #print(var_C)
-
-    ### CHECK DIAZ HYPOTHESIS  ############################################
-    U = [sum([p * cc for cc, p in zip(*c)]) / periods[i] for i, c in execution_times.items()]
-    Ubar = sum(U)
-    Umax = sum(max(c[0]) / periods[i] for i, c in execution_times.items())
-    print('feasible ? :', Umax, Umax <= 1)
-    print('schedulable ? :', Umax, Umax <= n*(2**(1/n) - 1))
-    print('stationary ? :', Ubar,  Ubar <= 1.)
-    m = array(([sum([c0 * c1 for c0, c1 in zip(*c)]) for c in C]))
-    var_C = array([(sum([c0 ** 2 * c1 for c0, c1 in zip(*c)]) - m[i] ** 2) / periods[i] for i, c in enumerate(C)])
-
-    #mu = ([0], [1.])
+#if __name__ == '__main__':
+#    from simso.generator.task_generator import generate_ptask_set
+#    from dSumExponential.sum_exponential import SumExponential
+#    from statsmodels.distributions.empirical_distribution import ECDF
 #
-    #for c in C:
-    #    mu = conv(mu, c)
-    #plt.bar(*mu)
-    #plt.show()
+#    n = 3
+#    C, periods = generate_ptask_set(n, 1.2, periodmin=10, periodmax=30)
+#    execution_times = dict((i, c) for i, c in enumerate(C))
+#    assert all((len(c[0]) == len(c[1]) for c in C)), 'values and prob not matching'
 #
-    T = 100 #* max(periods)
-    instance = make_instance(offsets, periods, deadlines, n=n, exp=exp, T=T, return_int=True)
-    W = ([0], [1.])
+#    offsets = [0] * n
+#    #periods = list(range(4, 20, 2))[:n]
+#    H = lcm.reduce(periods)
+#    deadlines = periods #(9, 12, 18)
+#
+#    #var_C = [ sum([ cc * cc * c[1][i] for cc in c[0]]) / periods[i] for i, c in enumerate(C) ]
+#    #print(var_C)
+#
+#    ### CHECK DIAZ HYPOTHESIS  ############################################
+#    U = [sum([p * cc for cc, p in zip(*c)]) / periods[i] for i, c in execution_times.items()]
+#    Ubar = sum(U)
+#    Umax = sum(max(c[0]) / periods[i] for i, c in execution_times.items())
+#    print('feasible ? :', Umax, Umax <= 1)
+#    print('schedulable ? :', Umax, Umax <= n*(2**(1/n) - 1))
+#    print('stationary ? :', Ubar,  Ubar <= 1.)
+#    m = array(([sum([c0 * c1 for c0, c1 in zip(*c)]) for c in C]))
+#    var_C = array([(sum([c0 ** 2 * c1 for c0, c1 in zip(*c)]) - m[i] ** 2) / periods[i] for i, c in enumerate(C)])
+#
+#    #mu = ([0], [1.])
+##
+#    #for c in C:
+#    #    mu = conv(mu, c)
+#    #plt.bar(*mu)
+#    #plt.show()
+##
+#    T = 100 #* max(periods)
+#    instance = make_instance(offsets, periods, deadlines, n=n, exp=exp, T=T, return_int=True)
+#    W = ([0], [1.])
+#
+#    mu = ([0], [1.])
+#    H = lcm.reduce(periods)
+#
+#    for i, c in enumerate(C):
+#        for _ in trange(H // periods[i]):
+#            mu = conv(mu, c)
+#
+#    for _ in trange(10):
+#        W = update_workload(W, mu, H)
+#    W[1][0] = 1 - sum(W[1][1:])
+#
+#    #R = diaz(offsets, execution_times, periods, deadlines, n=10)
+#
+#    #for r in R.values():
+#    #    plt.bar(*r)
+#    #    plt.show()
+#
+#    eta = 2 * (1 - Ubar) / sum(var_C)
+#
+#    x_range = linspace(0, 60)
+#    fig, ax = plt.subplots(1, 2)
+#    sample = random.choice(a=W[0], p=W[1], size=1000) #SumExponential(execution_times=execution_times.values(), periods=periods).sample(1000)
+#    cdf = lambda t: ECDF(sample)(t)
+#
+#    #w_min = min(where(array(W[1]) > 0))[0]
+#    ax[0].bar(array(W[0]), W[1], label='Diaz')#
+#    ax[1].bar(array(W[0]), cumsum(W[1]), label='Diaz')
+#    ax[1].plot(x_range, cdf(x_range), color='red', label='brownian')
+#
+#    for ax_, title in zip(ax, ('pdf', 'cdf')):
+#        #ax_.set_xlim(0, 200)
+#        ax_.set_title(title)
+#    plt.legend()
+#    plt.show()
 
-    mu = ([0], [1.])
-    H = lcm.reduce(periods)
+if __name__ == "__main__":
+    from read_csv import read_csv
 
-    for i, c in enumerate(C):
-        for _ in trange(H // periods[i]):
-            mu = conv(mu, c)
-
-    for _ in trange(10):
-        W = update_workload(W, mu, H)
-    W[1][0] = 1 - sum(W[1][1:])
-
-    #R = diaz(offsets, execution_times, periods, deadlines, n=10)
-
-    #for r in R.values():
-    #    plt.bar(*r)
-    #    plt.show()
-
-    eta = 2 * (1 - Ubar) / sum(var_C)
-
-    x_range = linspace(0, 60)
-    fig, ax = plt.subplots(1, 2)
-    sample = random.choice(a=W[0], p=W[1], size=1000) #SumExponential(execution_times=execution_times.values(), periods=periods).sample(1000)
-    cdf = lambda t: ECDF(sample)(t)
-
-    #w_min = min(where(array(W[1]) > 0))[0]
-    ax[0].bar(array(W[0]), W[1], label='Diaz')#
-    ax[1].bar(array(W[0]), cumsum(W[1]), label='Diaz')
-    ax[1].plot(x_range, cdf(x_range), color='red', label='brownian')
-
-    for ax_, title in zip(ax, ('pdf', 'cdf')):
-        #ax_.set_xlim(0, 200)
-        ax_.set_title(title)
-    plt.legend()
-    plt.show()
-
-
+    execution_times, periods = read_csv("/home/kzagalo/Documents/rInverseGaussian/data/")
+    offsets = [0] * len(periods)
+    response_times, check = diaz(offsets=offsets, execution_times=execution_times,
+                                 periods=periods, deadlines=periods, T=100000)
+    print(check)
+    for i, r in response_times.items():
+        print(r)
+        plt.bar(*r)
+        plt.title(f'Task {i}')
+        plt.show()
+    print(response_times)

@@ -25,7 +25,7 @@ class continuousET(AbstractExecutionTimeModel):
 
     def on_activate(self, job):
         self.executed[job] = 0
-        self.et[job] = ceil(job._task._task_info.distribution.rvs())
+        self.et[job] = job._task._task_info.distribution.rvs()
 
     def on_execute(self, job):
         self.on_execute_date[job] = self.sim.now()

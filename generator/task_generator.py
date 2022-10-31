@@ -333,8 +333,8 @@ def generate_ptask_set(n, utilization, periodmin=None, periodmax=None):
         periodmin = 10 * n
         periodmax = 100 * n
     periods = gen_periods_loguniform(n, 1, periodmin, periodmax, round_to_int=True)[0]
-    periods = [int(p) for p in periods]
-    Umax = UUniFastDiscard(n, 2, 1)[0]
+    periods = sorted([int(p) for p in periods])
+    Umax = UUniFastDiscard(n, utilization, 1)[0]
 
     C = [math.ceil(Umax[i] * p) for i, p in enumerate(periods)]
     execution_times = []
@@ -361,7 +361,7 @@ def generate_ptask_set(n, utilization, periodmin=None, periodmax=None):
     Ubar = np.cumsum([sum([c0 * c1 for c0, c1 in zip(*c)]) / periods[i] for i, c in enumerate(execution_times)])
     end = -1
     for i, u in enumerate(Ubar):
-        if u > utilization:
+        if u > 1:
             end = i
             break
     return execution_times[:end], periods[:end], Ubar[:end]
