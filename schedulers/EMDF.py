@@ -62,9 +62,7 @@ class PreEMDF:
 
     def deadline_miss_proba(self, k, task, component):
         q = self.mixture_models[k][task.id].quantile(task.alpha, component)
-        q_norm = (q - self.mixture_models[k][task.id]._means[component]) ** 2 / \
-                 (self.mixture_models[k][task.id].cv_[0] * q)
-        return abs(int(q > self.mixture_models[k][task.id]._means[component]) - chi2.cdf(q_norm, df=1, loc=0, scale=1))
+        return self.mixture_models[k][task.id].dmp(q)
 
     def _predict(self, x, task_id): # X=[1,2,3,4]
         cluster = self.kmeans_inertia.predict([x])[0] #([x])
