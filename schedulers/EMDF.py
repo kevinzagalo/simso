@@ -106,7 +106,7 @@ class PreEMDF:
 
     def save(self, path):
         with open(os.path.join(path, 'EMDF.json'), 'w') as f:
-            json.dump(self.get_parameters(), f)
+            json.dump(self.get_parameters(), f, indent=6)
 
     def load(self, path_json_file):
         with open(path_json_file) as f:
