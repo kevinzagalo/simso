@@ -4,7 +4,6 @@ architectures.
 """
 from simso.core import Scheduler
 from simso.schedulers import scheduler
-from simso.estimation.PreEMDF import PreEMDF
 from simso.estimation.KmeansInertia import KmeansInertia
 from simso.estimation import rInvGaussMixture
 import numpy as np
