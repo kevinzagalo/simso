@@ -48,20 +48,21 @@ class PreEMDF:
             for task in schedule.task_list:
                 bic_list = []
                 igmm_list = []
-                ind_k_task = (clusters == k and activation_list == task.id)
+                ind_k_task = [p1 and p2 for p1, p2 in zip(list(clusters == k), list(activation_list == task.id))]
                 for n_components in range(1, self.n_components_max):
-                    igmm_list.append(rInvGaussMixture(n_components=n_components).fit(response_times[ind_k_task]))
-                    bic_list.append(igmm_list[-1].bic(response_times[ind_k_task]))
+                    igmm_list.append(rInvGaussMixture(n_components=n_components).fit(response_times[ind_k_task, task.id]))
+                    bic_list.append(igmm_list[-1].bic(response_times[ind_k_task, task.id]))
                 best = np.argmax(bic_list)
                 self.mixture_models[k][task.id] = igmm_list[best]
                 self.dmp[k][task.id] = [0] * best
-                for component in range(1, best+1):
+                for component in range(best):
+                    print(k, task.id, component, self.deadline_miss_proba(k, task, component))
                     self.dmp[k][task.id][component] = self.deadline_miss_proba(k, task, component)
         return self
 
     def deadline_miss_proba(self, k, task, component):
-        q = self.mixture_models[k][task.id].quantile(task.alpha, component)
-        return self.mixture_models[k][task.id].dmp(q)
+        #q = self.mixture_models[k][task.id].quantile(task.alpha, component)
+        return self.mixture_models[k][task.id].dmp(task.deadline, component)
 
     def _predict(self, x, task_id): # X=[1,2,3,4]
         cluster = self.kmeans_inertia.predict([x])[0] #([x])
