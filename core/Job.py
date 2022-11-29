@@ -33,6 +33,7 @@ class Job(Process):
         self.instr_count = 0  # Updated by the cache model.
         self._computation_time = 0
         self._last_exec = None
+        self.preemptions = 0
         self._n_instr = task.n_instr
         self._start_date = None
         self._end_date = None
@@ -85,22 +86,24 @@ class Job(Process):
         self._on_stop_exec()
         self._etm.on_preempted(self)
         self._is_preempted = True
+        self.preemptions += 1
         self._was_running_on = self.cpu
-
         self._monitor.observe(JobEvent(self, JobEvent.PREEMPTED))
         self._sim.logger.log(self.name + " Preempted! ret: " +
                              str(self.interruptLeft), kernel=True)
 
     def _on_terminated(self):
         self._on_stop_exec()
-        self._etm.on_terminated(self)
         self._end_date = self.sim.now()
-        self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.end_job(self)
+        self._etm.on_terminated(self)
+        self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.response_times.append(self.response_time)
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
         self._sim.scheduler.add_response_time(self)
+        if self._sim.scheduler.activation_matrix is not None:
+            self._sim.scheduler.activation_matrix[self.task.id, self._was_running_on.identifier] = 0
 
     def _on_abort(self):
         self._on_stop_exec()
@@ -144,8 +147,10 @@ class Job(Process):
         True if the end_date is greater than the deadline or if the job was
         aborted.
         """
-        return (self._absolute_deadline * self._sim.cycles_per_ms <
-                self._end_date or self._aborted)
+        if self._end_date:
+            return self._absolute_deadline * self._sim.cycles_per_ms < self._end_date
+        else:
+            return self._aborted
 
     @property
     def start_date(self):

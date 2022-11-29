@@ -5,7 +5,7 @@ import os.path
 import importlib
 import pkgutil
 import inspect
-
+from numpy import zeros
 from simso.core.SchedulerEvent import SchedulerBeginScheduleEvent, \
     SchedulerEndScheduleEvent, SchedulerBeginActivateEvent, \
     SchedulerEndActivateEvent, SchedulerBeginTerminateEvent, \
@@ -140,6 +140,7 @@ class Scheduler(object):
         Methods:
         """
         self.response_times = []
+        self.activation_matrix = None
         self.clf = None
         self.modes = scheduler_info.modes
         self.ARTT = []
@@ -260,7 +261,7 @@ class Scheduler(object):
             rt = job.response_time
             if rt != self.ARTT[job.task.id]:
                 self.ARTT[job.task.id] = rt
-                self.response_times.append((job.task.id, tuple(self.ARTT)))
+                self.response_times.append((job.task.id, tuple(self.ARTT), job._sim.now()))
 
     def init_response_time(self):
         if self.task_list and len(self.ARTT) == 0:

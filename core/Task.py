@@ -54,6 +54,9 @@ class TaskInfo(object):
         self.et_stddev = et_stddev
         self.modes = modes
         self.proba = proba
+        m = sum([c0 * c1 for c0, c1 in zip(modes, proba)])
+        self.utilization = m / period
+        self.deviation = (sum([c0**2 * c1 for c0, c1 in zip(modes, proba)]) - m**2) / period
         self.alpha = alpha
         self.base_cpi = base_cpi
         self._stack = None
@@ -134,8 +137,7 @@ class GenericTask(Process):
         Process.__init__(self, name=task_info.name, sim=sim)
         self.name = task_info.name
         self._task_info = task_info
-        self._monitor = Monitor(name="Monitor" + self.name + "_states",
-                                sim=sim)
+        self._monitor = Monitor(name="Monitor" + self.name + "_states", sim=sim)
         self._activations_fifo = deque([])
         self._sim = sim
         self.cpu = None
@@ -166,6 +168,14 @@ class GenericTask(Process):
     @property
     def base_cpi(self):
         return self._task_info.base_cpi
+
+    @property
+    def utilization(self):
+        return self._task_info.utilization
+
+    @property
+    def deviation(self):
+        return self._task_info.deviation
 
     @property
     def data(self):

@@ -5,15 +5,17 @@ architectures.
 from simso.core import Scheduler
 from simso.schedulers import scheduler
 from simso.estimation.KmeansInertia import KmeansInertia
-from simso.estimation import rInvGaussMixture
+from simso.estimation import RTInvGaussMixture as rInvGaussMixture
 import numpy as np
 import json
 import os
 from scipy.stats import chi2
+import matplotlib.pyplot as plt
+
 
 class PreEMDF:
 
-    def __init__(self, inertia=0.1, n_tasks=None, n_components_max=5, alpha=None):
+    def __init__(self, verbose=False, inertia=0.1, n_tasks=None, n_components_max=5, alpha=None):
         self.inertia = inertia
         self.alpha = alpha
         self.igmms = {}
@@ -23,46 +25,64 @@ class PreEMDF:
         self.mixture_models = {}
         self.dmp = {}
         self.transitions = None
+        self.verbose = verbose
 
     def fit(self, schedule):
         self.n_tasks_ = len(schedule.task_list)
-        activation_list = np.array([x[0] for x in schedule.response_times if all(x[1])])
-        response_times = np.array([x[1] for x in schedule.response_times if all(x[1])])
+        X = np.array(schedule.response_times, dtype=object).copy()
+        utilizations, deviations = [], []
+        for task in schedule.task_list:
+            m = sum([c0 * c1 for c0, c1 in zip(task.modes, task.proba)])
+            utilizations.append(m / task.period)
+            deviations.append(sum([(c0 - m) ** 2 * c1 for c0, c1 in zip(task.modes, task.proba)]) / task.period)
+        deviations = np.cumsum(deviations)
+        utilizations = np.cumsum(utilizations)
+        cvs = deviations / (1 - utilizations) ** 2
 
-        ## Clustering
-        self.kmeans_inertia = KmeansInertia(inertia=self.inertia).fit(response_times)
-        clusters = self.kmeans_inertia.predict(response_times)
+        for task in schedule.task_list[1:]:
+            bic_list = []
+            igmm_list = []
+            ind_k_task = np.where(X[:, 0] == task.id)[0]
+            r_task = [r[task.id] for r in X[ind_k_task, 1]]
+            for n_components in range(1, 3):# self.n_components_max):
+                if self.verbose:
+                    print('Task', task.id, 'component', n_components)
+                rIG = rInvGaussMixture(n_components=n_components, cv_init=cvs[task.id-1], verbose=self.verbose,
+                                       utilization=utilizations[task.id-1]).fit(r_task)
+                igmm_list.append(rIG)
+                bic_list.append(rIG.bic(r_task))
+            best = np.argmax(bic_list)
+            self.mixture_models[task.id] = igmm_list[best]
+            self.dmp[task.id] = [0] * (best+1)
+            for component in range(best+1):
+                self.dmp[task.id][component] = self.mixture_models[task.id].dmp(task.deadline, component)
 
-        ## Markov transitions
-        k = len(self.kmeans_inertia.model.cluster_centers_)
-        self.transitions = np.zeros((k, k))
-        for (i, j) in zip(clusters[:-1], clusters[1:]):
-            self.transitions[i, j] += 1
-        for i in range(k):
-            self.transitions[i, :] /= self.transitions[i, :].sum()
+        backlogs = np.zeros((len(X), self.n_tasks_))
+        for n_transition, job in enumerate(schedule.response_times):
+            task, response_times, arrival = job
+            for i, r in enumerate(response_times):
+                if i == 0:
+                    continue
+                backlogs[n_transition, i] = self.rt_to_bl(task, i, r)
 
-        ## Parametric estimation
-        for k in set(clusters):
-            self.mixture_models[k] = {}
-            self.dmp[k] = {}
-            for task in schedule.task_list:
-                bic_list = []
-                igmm_list = []
-                ind_k_task = [p1 and p2 for p1, p2 in zip(list(clusters == k), list(activation_list == task.id))]
-                for n_components in range(1, self.n_components_max):
-                    igmm_list.append(rInvGaussMixture(n_components=n_components).fit(response_times[ind_k_task, task.id]))
-                    bic_list.append(igmm_list[-1].bic(response_times[ind_k_task, task.id]))
-                best = np.argmax(bic_list)
-                self.mixture_models[k][task.id] = igmm_list[best]
-                self.dmp[k][task.id] = [0] * best
-                for component in range(best):
-                    print(k, task.id, component, self.deadline_miss_proba(k, task, component))
-                    self.dmp[k][task.id][component] = self.deadline_miss_proba(k, task, component)
+        for i in range(self.n_tasks_):
+            plt.hist(backlogs[:, i], bins=25)
+            plt.show()
+
         return self
 
-    def deadline_miss_proba(self, k, task, component):
-        #q = self.mixture_models[k][task.id].quantile(task.alpha, component)
-        return self.mixture_models[k][task.id].dmp(task.deadline, component)
+    def reward(self, b, b_prime, task_id, task_list):
+        r = sum([self.mixture_models[i].dmp(task_list[i].deadline, b[i]) for i in range(1, task_id)])
+        r += sum([self.mixture_models[i].dmp(task_list[i].deadline, b_prime[i]) for i in range(task_id+1, self.n_tasks_)])
+        return np.exp(-r)
+
+    def rt_to_bl(self, new_task, task, rt):
+        component = self.mixture_models[task].predict(rt)
+        b = self.mixture_models[task].backlog_[component]
+        if task > new_task:
+            return b
+        else:
+            return 0
 
     def _predict(self, x, task_id): # X=[1,2,3,4]
         cluster = self.kmeans_inertia.predict([x])[0] #([x])
@@ -95,7 +115,6 @@ class PreEMDF:
         self.n_tasks_ = params["n_tasks_"]
         self.n_clusters_ = len(params.keys())
         self.kmeans_inertia = KmeansInertia(inertia=self.inertia)
-        # self.kmeans_inertia.set_parameters(params["kmeans_params"])
         self.mixture_models = {}
         for k in range(self.n_clusters_):
             self.mixture_models[k] = {}
@@ -126,39 +145,60 @@ class EMDF(Scheduler):
             print('Train the model first !')
         self.clf = PreEMDF()
         self.clf.set_parameters(dict_params)
+        self.activation_matrix = np.zeros((len(self.task_list), len(self.processors)))
+        self.utilizations = np.array([t.utilization for t in self.task_list])
+        self.backlogs = np.zeros((len(self.task_list), len(self.processors)))
 
     def on_activate(self, job):
         job.cpu.resched()
 
     def on_terminated(self, job):
         job.cpu.resched()
+        self.activation_matrix[job.task.id, job.cpu._identifier] = 0
 
     def schedule(self, cpu):
-        # List of ready jobs not currently running:
-        ready_jobs = [t.job for t in self.task_list
-                      if t.is_active() and not t.job.is_running()]
-
-        if ready_jobs:
-            # Select a free processor or, if none,
-            # the one with the greatest deadline (self in case of equality):
-            for j in ready_jobs:
-                if all(self.ARTT):
-                    previous_cluster, component = self.clf.predict(self.ARTT, j.task.id)
-                    j.dmp = self.dmp[previous_cluster][j.task.id][component]
-                else:
-                    j.dmp = j.absolute_deadline
-
+        decision = None
+        if self.ready_list:
+            # Get a free processor or a processor running a low priority job.
             key = lambda x: (
-                1 if not x.running else 0,
-                x.running.dmp if x.running else 0,
-                1 if x is cpu else 0
+                0 if x.running is None else 1,
+                0 if self.activation_matrix[x._identifier] @ self.utilizations + x.running.task.utilization > 1 else 1,
+                -x.running.period if x.running else 0,
+                0 if x is cpu else 1
             )
-            cpu_min = max(self.processors, key=key)
 
-            # Select the job with the least priority: # MARC ANTOINE
-            job = min(ready_jobs, key=lambda x: x.dmp)
+            components = [self.clf.mixture_models[i].predict(r) for i, r in enumerate(self.response_times[-1][1])]
+            b = np.array([self.clf.mixture_models[i].backlogs_[c] for i, c in enumerate(components)])
+
+            #for j in self.ready_list:
+            #    component = self.clf.predict(j.task.response_times[—1])
+            #    self.backlogs[j.]
+            cpu_min = min(self.processors, key=key)
+
+            # Job with highest priority.
+            job = min(self.ready_list, key=lambda x: x.period)
 
             if (cpu_min.running is None or
-                    cpu_min.running.dmp > job.dmp):
-                print(self.sim.now(), job.name, cpu_min.name)
-                return (job, cpu_min)
+                    cpu_min.running.period > job.period):
+                self.ready_list.remove(job)
+                if cpu_min.running:
+                    self.ready_list.append(cpu_min.running)
+                decision = (job, cpu_min)
+                self.activation_matrix[job.task.id, cpu_min._identifier] = 1
+
+        return decision
+
+
+if __name__ == '__main__':
+    from simso.generator.generate_schedule import generate_schedule
+    from read_csv import read_csv
+    import numpy as np
+    import os
+
+    execution_times, periods = read_csv("/home/kzagalo/Documents/rInverseGaussian/data/")
+    schedule = generate_schedule(execution_times=execution_times[:5], duration=100000,
+                                 periods=periods[:5], scheduler='RM', etm='pet')
+    premodel = PreEMDF(verbose=True).fit(schedule)
+    premodel.save(os.curdir)
+
+

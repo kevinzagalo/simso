@@ -18,11 +18,11 @@ def make_instance(offsets, periods, deadlines, T=None):
     return sorted(jobs, key=lambda j: (j[1], j[0]))
 
 
-def conv(w, c, k=0):
+def conv(w, c, k=0, speed=1.):
     assert len(w[0]) == len(w[1]) and len(c[0]) == len(c[1]), 'values and prob not matching'
     p = []
     r = []
-    prod_values = list(product(w[0][k:], c[0]))
+    prod_values = list(product(w[0][k:], array(c[0])))
 
     for x, y in prod_values:
         #if x+y in r:
@@ -42,7 +42,7 @@ def conv(w, c, k=0):
             r.insert(j, x+y)
             p.insert(j, w[1][k:][j1] * c[1][j2])
             #p.append(array(w[1][k:])[j1] * array(c[1])[j2])
-    return r, p  # convolve(w[1], c[1])
+    return list(array(r)/speed), p  # convolve(w[1], c[1])
 
 
 def diaz_conv(r, delta, c):
