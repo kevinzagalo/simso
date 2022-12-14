@@ -34,6 +34,7 @@ class Job(Process):
         self._computation_time = 0
         self._last_exec = None
         self.preemptions = 0
+        self.deadline_miss = 0
         self._n_instr = task.n_instr
         self._start_date = None
         self._end_date = None
@@ -62,7 +63,7 @@ class Job(Process):
         self._etm.on_activate(self)
         if self.cpu.was_running and self.sim.now() > self.cpu.was_running.absolute_deadline:
             self._task.deadline_misses += 1
-        self._sim.scheduler.add_response_time(self)
+        #self._sim.scheduler.add_response_time(self)
 
     def _on_execute(self):
         self._last_exec = self.sim.now()
@@ -95,13 +96,15 @@ class Job(Process):
     def _on_terminated(self):
         self._on_stop_exec()
         self._end_date = self.sim.now()
+        if self.response_time > self.deadline:
+            self.deadline_miss = 1
         self._task.end_job(self)
         self._etm.on_terminated(self)
         self._monitor.observe(JobEvent(self, JobEvent.TERMINATED))
         self._task.response_times.append(self.response_time)
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
-        self._sim.scheduler.add_response_time(self)
+        #self._sim.scheduler.add_response_time(self)
         if self._sim.scheduler.activation_matrix is not None:
             self._sim.scheduler.activation_matrix[self.task.id, self._was_running_on.identifier] = 0
 
@@ -110,6 +113,7 @@ class Job(Process):
         self._etm.on_abort(self)
         self._end_date = self.sim.now()
         self._aborted = True
+        self.deadline_miss = 1
         self._monitor.observe(JobEvent(self, JobEvent.ABORTED))
         self._task.end_job(self)
         self._task.cpu.terminate(self)
@@ -320,7 +324,7 @@ class Job(Process):
                 if ret <= 0:
                     # End of job.
                     self._on_terminated()
-                    self._sim.scheduler.add_response_time(self)
+                    #self._sim.scheduler.add_response_time(self)
 
             else:
                 self.interruptReset()

@@ -51,7 +51,7 @@ class LRE_TL(Scheduler):
                 heappush(self.h_d, dl)
 
         self.t_f = self.sim.now() + self.pmin
-        if self.h_d[0] <= self.t_f:
+        if self.h_d and self.h_d[0] <= self.t_f:
             self.t_f = heappop(self.h_d)
 
         z = 0

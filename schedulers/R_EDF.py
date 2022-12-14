@@ -5,9 +5,9 @@ architectures.
 from simso.core import Scheduler
 from simso.schedulers import scheduler
 
-@scheduler("simso.schedulers.EDF")
-class EDF(Scheduler):
-    """Earliest Deadline First"""
+@scheduler("simso.schedulers.R_EDF")
+class R_EDF(Scheduler):
+    """Restricted Earliest Deadline First"""
     def on_activate(self, job):
         job.cpu.resched()
 
@@ -22,15 +22,20 @@ class EDF(Scheduler):
         if ready_jobs:
             # Select a free processor or, if none,
             # the one with the greatest deadline (self in case of equality):
+
+
+            # Select the job with the least priority:
+            job = min(ready_jobs, key=lambda x: x.absolute_deadline)
             key = lambda x: (
                 1 if not x.running else 0,
                 x.running.absolute_deadline if x.running else 0,
                 1 if x is cpu else 0
             )
-            cpu_min = max(self.processors, key=key)
 
-            # Select the job with the least priority:
-            job = min(ready_jobs, key=lambda x: x.absolute_deadline)
+            if job._was_running_on is not None:
+                cpu_min = job._was_running_on
+            else:
+                cpu_min = min(self.processors, key=key)
 
             if (cpu_min.running is None or
                     cpu_min.running.absolute_deadline > job.absolute_deadline):

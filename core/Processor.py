@@ -211,8 +211,8 @@ class Processor(Process):
 
                     # If trying to execute a terminated job, warn and ignore:
                     if job is not None and not job.is_active():
-                        print("Can't schedule a terminated job! ({})"
-                              .format(job.name))
+                        #print("Can't schedule a terminated job! ({})"
+                        #      .format(job.name))
                         continue
 
                     # if the job was running somewhere else, stop it.

@@ -32,17 +32,6 @@ class Model(Simulation):
         task_info_list = configuration.task_info_list
         proc_info_list = configuration.proc_info_list
         self._cycles_per_ms = configuration.cycles_per_ms
-        self.p = p
-        if 'EDF_MD' in configuration.scheduler_info.clas:
-            #if 'RM' in configuration.scheduler_info.train:
-            #    configuration.scheduler_info.clas = "simso.schedulers.RM"
-            #elif 'US' in configuration.scheduler_info.train:
-            configuration.scheduler_info.clas = "simso.schedulers.EDF_US"
-            #else:
-            #    configuration.scheduler_info.clas = "simso.schedulers.EDF"
-
-            self.p = True
-
         self.scheduler = configuration.scheduler_info.instantiate(self)
         self.configuration = configuration
 
@@ -147,7 +136,6 @@ class Model(Simulation):
         """ Execute the simulation."""
         self.initialize()
         self.scheduler.init()
-        self.scheduler.init_response_time()
 
         self.progress.start()
 
@@ -162,6 +150,6 @@ class Model(Simulation):
         finally:
             self._etm.update()
 
-            if not self.p and self.now() > 0:
+            if self.now() > 0:
                 self.results = Results(self)
                 self.results.end()

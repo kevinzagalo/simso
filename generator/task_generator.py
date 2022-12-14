@@ -236,6 +236,11 @@ def gen_arrivals(period, min_, max_, round_to_int=False):
     return dates
 
 
+def gen_arrivals_discrete(period, duration, offset=0):
+    dates = offset + np.cumsum(np.random.choice(p=period[1], a=period[0], size=int(duration // min(period[0]))))
+    return [offset] + list(dates[np.where(dates < duration)[0]])
+
+
 def gen_periods_loguniform(n, nsets, min_, max_, round_to_int=False):
     """
     Generate a list of `nsets` sets containing each `n` random periods using a

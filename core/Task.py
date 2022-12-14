@@ -52,11 +52,9 @@ class TaskInfo(object):
         self.wcet = wcet
         self.acet = acet
         self.et_stddev = et_stddev
+        self.execution_time = (modes, proba)
         self.modes = modes
         self.proba = proba
-        m = sum([c0 * c1 for c0, c1 in zip(modes, proba)])
-        self.utilization = m / period
-        self.deviation = (sum([c0**2 * c1 for c0, c1 in zip(modes, proba)]) - m**2) / period
         self.alpha = alpha
         self.base_cpi = base_cpi
         self._stack = None
@@ -168,14 +166,6 @@ class GenericTask(Process):
     @property
     def base_cpi(self):
         return self._task_info.base_cpi
-
-    @property
-    def utilization(self):
-        return self._task_info.utilization
-
-    @property
-    def deviation(self):
-        return self._task_info.deviation
 
     @property
     def data(self):
@@ -342,6 +332,15 @@ class PTask(GenericTask):
     """
     fields = ['activation_date', 'period', 'deadline', 'wcet']
 
+    def __init__(self, sim, task_info):
+        super().__init__(sim, task_info)
+        if self.modes:
+            self.utilization = sum([c0 * c1 for c0, c1 in zip(self.modes, self.proba)]) / self.period
+        self.max_utilization = self.wcet / self.period
+        if self.modes:
+            self.deviation = self.et_stddev ** 2 / self.period
+            self.max_deviation = (self.wcet - min(self.modes)) ** 2 / self.period
+
     def execute(self):
         self._init()
         # wait the activation date.
@@ -352,6 +351,10 @@ class PTask(GenericTask):
             #print self.sim.now(), "activate", self.name
             self.create_job()
             yield hold, self, int(self.period * self._sim.cycles_per_ms)
+
+    @property
+    def inter_arrival(self):
+        return ([self.period], [1.])
 
 
 class SporadicTask(GenericTask):
@@ -374,13 +377,59 @@ class SporadicTask(GenericTask):
         return self._task_info.list_activation_dates
 
 
+class StationaryTask(GenericTask):
+    """
+    Stationary Task process. Inherits from :class:`GenericTask`. The jobs are
+    created using a list of activation dates.
+    """
+    fields = ['list_activation_dates', 'deadline', 'modes', 'proba', 'period']
+
+    def __init__(self, sim, task_info):
+        self.rate = 1 / sum([pp0 * pp1 for pp0, pp1 in zip(*task_info.period)])
+        self.inter_arrival = task_info.period
+        super().__init__(sim, task_info)
+        self.utilization = sum([c0 * c1 for c0, c1 in zip(self.modes, self.proba)]) * self.rate
+        self.max_utilization = self.wcet / self.period
+        self.deviation = self.et_stddev**2 * self.rate
+        self.max_deviation = (self.wcet - min(task_info.modes))**2 / self.period
+
+    def execute(self):
+
+        self._init()
+        for ndate in self.list_activation_dates:
+            yield hold, self, int(ndate * self._sim.cycles_per_ms) \
+                - self._sim.now()
+            self.create_job()
+
+    @property
+    def period(self):
+        return min(self.inter_arrival[0])
+
+    @property
+    def acet(self):
+        return self.utilization / self.rate
+
+    @property
+    def et_stddev(self):
+        return (sum([c0**2 * c1 for c0, c1 in zip(self.modes, self.proba)]) - self.acet**2)**(.5)
+
+    @property
+    def wcet(self):
+        return max(self.modes)
+
+    @property
+    def list_activation_dates(self):
+        return self._task_info.list_activation_dates
+
+
 task_types = {
     "Periodic": PTask,
     "APeriodic": ATask,
-    "Sporadic": SporadicTask
+    "Sporadic": SporadicTask,
+    "Stationary": StationaryTask
 }
 
-task_types_names = ["Periodic", "APeriodic", "Sporadic"]
+task_types_names = ["Periodic", "APeriodic", "Sporadic", "Stationary"]
 
 
 def Task(sim, task_info):

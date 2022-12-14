@@ -30,7 +30,8 @@ class pET(AbstractExecutionTimeModel):
             proba = [job.task.proba]
         else:
             proba = job.task.proba
-        self.et[job] = random.choice(a=modes, p=proba)
+        w = random.choice(a=modes, p=proba)
+        self.et[job] = w
 
     def on_execute(self, job):
         self.on_execute_date[job] = self.sim.now()

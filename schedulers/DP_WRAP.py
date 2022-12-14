@@ -66,8 +66,8 @@ class DP_WRAP(Scheduler):
                     # Because every durations are rounded to the upper value,
                     # the last job may have not enough space left.
                     # This could probably be improved.
-                    print("Warning: didn't allowed enough time to last task.",
-                          duration - duration1)
+                    #print("Warning: didn't allowed enough time to last task.",
+                    #      duration - duration1)
                     break
 
                 p += 1
@@ -121,7 +121,9 @@ class DP_WRAP(Scheduler):
         decisions = []
         for z, proc in enumerate(self.processors):
             l = self.allocations[z][1]
-            if not l[0][0] or l[0][0].is_active():
-                decisions.append((l[0][0] if l else None, proc))
+            if l and (not l[0][0] or l[0][0].is_active()):
+                decisions.append((l[0][0], proc))
+            elif not l:
+                decisions.append((None, proc))
 
         return decisions

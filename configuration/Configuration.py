@@ -188,10 +188,16 @@ class Configuration(object):
                 "Activation date must be positive."
 
             # Period >= 0:
-            assert task.period >= 0, "Tasks' periods must be positives."
+            if isinstance(task.period, list) or isinstance(task.period, tuple):
+                assert min(task.period[0]) >= 0, "Tasks' periods must be positives."
+            else:
+                assert task.period >= 0, "Tasks' periods must be positives."
 
-            # Deadline >= 0:
-            assert task.deadline >= 0, "Tasks' deadlines must be positives."
+            # Deadline >= 0:
+            if isinstance(task.deadline, list) or isinstance(task.deadline, tuple):
+                assert min(task.deadline[0]) >= 0, "Tasks' periods must be positives."
+            else:
+                assert task.deadline >= 0, "Tasks' periods must be positives."
 
             # N_instr >= 0:
             assert task.n_instr >= 0, \
@@ -295,8 +301,9 @@ class Configuration(object):
     def add_task(self, name, identifier, task_type="Periodic",
                  abort_on_miss=True, period=10, activation_date=0,
                  n_instr=0, mix=0.5, stack_file="", wcet=0, acet=0,
-                 et_stddev=0, deadline=10, base_cpi=1.0, followed_by=None, distribution=None,
-                 list_activation_dates=[], preemption_cost=0, data=None, modes=[1], proba=[1.], alpha=1e-1):
+                 et_stddev=0, deadline=10, base_cpi=1.0, followed_by=None,
+                 list_activation_dates=[], preemption_cost=0, data=None, modes=None, proba=None, distribution=None,
+                 alpha=1e-1):
         """
         Helper method to create a TaskInfo and add it to the list of tasks.
         """
@@ -307,7 +314,7 @@ class Configuration(object):
                         activation_date, n_instr, mix,
                         (stack_file, self.cur_dir), wcet, acet, et_stddev,
                         deadline, base_cpi, followed_by, list_activation_dates,
-                        preemption_cost, data, modes, proba, distribution, alpha)
+                        preemption_cost, data, modes=modes, proba=proba, distribution=distribution, alpha=alpha)
         self.task_info_list.append(task)
         return task
 

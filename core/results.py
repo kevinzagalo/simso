@@ -180,8 +180,14 @@ class JobR(object):
 
     @property
     def exceeded_deadline(self):
-        return self.end_date and (self.end_date > self.absolute_deadline
-                                  or self.aborted)
+        """
+        True if the end_date is greater than the deadline or if the job was
+        aborted.
+        """
+        if self._end_date:
+            return self._absolute_deadline * self._sim.cycles_per_ms < self._end_date
+        else:
+            return self._aborted
 
     @property
     def normalized_laxity(self):
