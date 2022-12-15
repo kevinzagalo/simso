@@ -55,7 +55,7 @@ class LDMP_RM0(Scheduler):
         self.utilizations = array([t.utilization for t in self.task_list])
         self.deviations = array([t.deviation for t in self.task_list])
         self.max_deviations = array([t.max_deviation for t in self.task_list])
-        with open("/Users/kevinzagalo/Documents/inria/rInverseGaussian/simso/schedulers/GRM.json") as json_file:
+        with open("/home/kzagalo/Documents/rInverseGaussian/simso/schedulers/GRM.json") as json_file:
             self.dict_mu = json.load(json_file)
 
     def on_activate(self, job):
@@ -74,9 +74,6 @@ class LDMP_RM0(Scheduler):
 
     def dmp(self, b, u, v, t, eps=1e-200):
         return max((eps, norm.cdf(-((1-u)*t - b)/sqrt(v*t)) - exp(-2*b*(1-u)/v) * norm.cdf(-((1-u)*t + b)/sqrt(v*t))))
-
-    def hoeffding(self, t, u, v):
-        return exp(- t * (1 - u) ** 2 / v)
 
     def reward(self, job, cpu):
         if not any(self.activation_matrix[:, cpu.identifier]):

@@ -11,8 +11,8 @@ from math import sqrt, exp, log
 from scipy.stats.distributions import norm
 
 
-@scheduler("simso.schedulers.G_LDMP_RM")
-class G_LDMP_RM(Scheduler):
+@scheduler("simso.schedulers.R_LLDMP_RM")
+class R_LLDMP_RM(Scheduler):
     """ Least Deadline Miss Probability with Rate monotonic """
     def init(self):
         self.ready_list = []
@@ -39,7 +39,7 @@ class G_LDMP_RM(Scheduler):
         if not any(self.activation_matrix[:, cpu.identifier]):
             return infty
 
-        u = self.activation_matrix[:, cpu.identifier] @ self.utilizations
+        u = self.activation_matrix[:, cpu.identifier] @ self.utilizations # sum(self.utilizations[where(self.activation_matrix[:, cpu.identifier] > 0)[0]])
         schedulable = u + self.utilizations[job.task.id] < cpu.speed
         if not schedulable:
             return -infty
@@ -65,15 +65,17 @@ class G_LDMP_RM(Scheduler):
 
     def allocate(self, job):
         cpu = max(self.processors, key=lambda x: self.reward(job, x))
-        for proc in self.processors:
-            self.activation_matrix[job.task.id, proc.identifier] = int(proc.identifier == cpu.identifier)
+        self.activation_matrix[job.task.id, cpu.identifier] = 1
         return cpu
 
     def schedule(self, cpu):
         decision = None
         if self.ready_list:
             job = min(self.ready_list, key=lambda x: x.absolute_deadline)
-            cpu = self.allocate(job)
+            if any(self.activation_matrix[job.task.id, :]) and job._was_running_on is not None:
+                cpu = job._was_running_on
+            else:
+                cpu = self.allocate(job)
             if (cpu.running is None or
                     cpu.running.absolute_deadline > job.absolute_deadline):
                 self.ready_list.remove(job)
