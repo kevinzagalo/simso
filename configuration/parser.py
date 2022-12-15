@@ -67,15 +67,14 @@ class Parser(object):
         for field in tasks_el.getElementsByTagName('field'):
             attr = field.attributes
             self.task_data_fields[attr['name'].value] = attr['type'].value
-
         tasks = tasks_el.getElementsByTagName('task')
         self.task_info_list = []
         for task in tasks:
             attr = task.attributes
-
             data = dict(
                 (k, convert_function[self.task_data_fields[k]](attr[k].value))
                 for k in attr.keys() if k in self.task_data_fields)
+
 
             task_type = 'Periodic'
             if 'task_type' in attr and attr['task_type'].value in task_types:
@@ -90,40 +89,53 @@ class Parser(object):
                     map(float, attr['list_activation_dates'].value.split(',')))
 
             tmp = {}
-            for at in 'proba', 'modes':
-                if ',' in attr[at].value:
-                    tmp[at] = list(map(float, attr[at].value.split(',')))
-                else:
-                    tmp[at] = list(map(float, attr[at].value.split()))
-                if len(tmp[at]) == 1:
-                    tmp[at] = tmp[at][0]
+            if "proba" in attr.keys() and "modes" in attr.keys():
+                for at in 'proba', 'modes':
+                    if ',' in attr[at].value:
+                        tmp[at] = list(map(float, attr[at].value.split(',')))
+                    else:
+                        tmp[at] = list(map(float, attr[at].value.split()))
+                    if len(tmp[at]) == 1:
+                        tmp[at] = tmp[at][0]
+
+                if type(tmp["proba"]) == float:
+                    tmp["proba"] = [tmp["proba"]]
+
+                if type(tmp["modes"]) == int or type(tmp["modes"]) == float:
+                    tmp["modes"] = [tmp["modes"]]
+
+                tmp["modes"] = [int(mode) for mode in tmp["modes"]]
 
             t = TaskInfo(
-                attr['name'].value,
-                int(attr['id'].value),
-                task_type,
-                'abort_on_miss' not in attr
+                name=str(attr['name'].value),
+                identifier=int(attr['id'].value),
+                task_type=str(task_type),
+                abort_on_miss= 'abort_on_miss' not in attr
                 or attr['abort_on_miss'].value == 'yes',
-                float(attr['period'].value),
-                float(attr['activationDate'].value)
-                if 'activationDate' in attr else 0,
-                int(attr['instructions'].value),
-                float(attr['mix'].value),
-                (self.cur_dir + '/' + attr['stack'].value,
-                    self.cur_dir) if 'stack' in attr else ("", self.cur_dir),
-                float(attr['WCET']),
-                tmp['ACET'] if 'ACET' in attr else 0,
-                tmp['et_stddev'] if 'et_stddev' in attr else 1,
-                float(attr['deadline']),
-                float(attr['base_cpi']),
-                int(attr['followed_by'].value)
+                period=float(attr['period'].value),
+                activation_date=float(attr['activationDate'].value)
+                if 'activationDate' in attr else float(0.0),
+                n_instr=int(attr['instructions'].value),
+                mix=float(attr['mix'].value),
+                stack_file=(self.cur_dir + '/' + attr['stack'].value,
+                            self.cur_dir) if 'stack' in attr else ("",
+                                                                   self.cur_dir),
+                wcet=float(attr['WCET'].value) if 'ACET' in attr else float(0),
+                acet=float(attr['ACET'].value)
+                if 'ACET' in attr else float(0),
+                et_stddev=float(attr['et_stddev'].value) if 'et_stddev' in attr else float(1),
+                deadline=float(attr['deadline'].value),
+                base_cpi=float(attr['base_cpi'].value),
+                followed_by=int(attr['followed_by'].value)
                 if 'followed_by' in attr else None,
-                list_activation_dates,
-                int(float(attr['preemption_cost'].value))
+                list_activation_dates=list_activation_dates,
+                preemption_cost=int(float(attr['preemption_cost'].value))
                 if 'preemption_cost' in attr else 0,
-                data,
-                tmp['proba'] if 'proba' in attr else 1.,
-                tmp['modes'] if 'modes' in attr else 0
+                data=data,
+                modes=[int(1)] if len(tmp) == 0 else tmp['modes'] if 'modes' in attr else int(1),
+                proba=[float(1)] if len(tmp) == 0 else tmp['proba'] if 'proba' in attr else float(1),
+                distribution=attr['distribution'] if 'distribution' in attr else None,
+                alpha=float(attr['alpha'].value) if 'alpha' in attr else 1e-1
             )
             self.task_info_list.append(t)
 

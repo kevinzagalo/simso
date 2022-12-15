@@ -103,7 +103,7 @@ def generate_tasks(top, task_info_list, fields):
                       'task_type': task.task_type,
                       'abort_on_miss': 'yes' if task.abort_on_miss else 'no',
                       'period': str(task.period),
-                      'activationDate': str(task.activation_date),
+                      'activationDate': str(float(task.activation_date)),
                       'list_activation_dates': ', '.join(
                           map(str, task.list_activation_dates)),
                       'deadline': str(task.deadline),
@@ -111,11 +111,18 @@ def generate_tasks(top, task_info_list, fields):
                       'instructions': str(task.n_instr),
                       'mix': str(task.mix),
                       'WCET': str(task.wcet),
-                      'ACET': str(task.acet),
+                      'ACET': str(float(task.acet)),
                       'preemption_cost': str(task.preemption_cost),
-                      'et_stddev': str(task.et_stddev)})
+                      'et_stddev': str(float(task.et_stddev))})
         if task.followed_by is not None:
             attrs['followed_by'] = str(task.followed_by)
+
+        if str(top.get("etm")) == "pet":
+            attrs['proba'] = ', '.join(map(str, task.proba))
+
+        if str(top.get("etm")) == "pet":
+            attrs['modes'] = ', '.join(map(str, task.modes))
+
         if task.stack_file:
             # XXX: what if the path contain a non-ascii character?
             attrs['stack'] = str(task.stack_file)
