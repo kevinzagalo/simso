@@ -5,7 +5,7 @@ from simso.generator.task_generator import gen_arrivals_discrete
 
 def generate_schedule(periods, deadlines=None, execution_times=None, duration=1000, scheduler='RM', discard=True,
                       etm='pet', distributions=None, verbose=False, cycles_per_ms=1, n_processors=1, speeds=None,
-                      task_type='Stationary'):
+                      task_type='Periodic'):
     configuration = Configuration()
     configuration.verbose = verbose
     configuration.alpha = 0.1
